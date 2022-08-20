@@ -16,9 +16,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 16.x
-      # Install rush
-      - name: Install rush
-        run: node common/scripts/install-run-rush.js install
-      - run: rush install --no-link
-      - run: rush link
-      - run: rush build --verbose
+      - run: node common/scripts/install-run-rush.js change -v
+      - run: node common/scripts/install-run-rush.js install
+      - run: node common/scripts/install-run-rush.js rebuild --verbose
+      - run: node common/scripts/install-run-rush.js test
