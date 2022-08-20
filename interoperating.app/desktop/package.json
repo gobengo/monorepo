@@ -1,13 +1,12 @@
 {
   "name": "@interoperating.app/desktop",
-  "type": "module",
   "private": true,
   "version": "0.0.0",
   "description": "",
-  "main": "src/index.js",
+  "main": "build/main.js",
   "scripts": {
     "build": "rimraf ./lib/ && tsc -b",
-    "start": "node --loader ts-node/esm src/start.ts",
+    "start": "concurrently -k \"build-electron -d\" \"wait-on build/.build-electron-done && electron .\"",
     "test": "NODE_NO_WARNINGS=1 ava"
   },
   "author": "",
@@ -22,7 +21,11 @@
     "@types/node": "^10.9.4",
     "rimraf": "^2.6.2",
     "ava": "~4.3.1",
-    "ts-node": "~10.9.1"
+    "ts-node": "~10.9.1",
+    "electron": "~20.0.3",
+    "build-electron": "~1.0.5",
+    "concurrently": "~7.3.0",
+    "wait-on": "~6.0.1"
   },
   "ava": {
 		"extensions": {
