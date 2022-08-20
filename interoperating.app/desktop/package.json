@@ -6,6 +6,7 @@
   "main": "build/main.js",
   "scripts": {
     "build": "rimraf ./lib/ && tsc -b",
+    "prestart": "npm run build",
     "start": "concurrently -k \"build-electron -d\" \"wait-on build/.build-electron-done && electron .\"",
     "test": "NODE_NO_WARNINGS=1 ava"
   },
