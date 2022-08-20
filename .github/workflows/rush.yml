@@ -1,0 +1,24 @@
+name: rush build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 18.x
+      # Install rush
+      - name: Install rush
+        run: node common/scripts/install-run-rush.js install
+      - run: rush install --no-link
+      - run: rush link
+      - run: rush build --verbose
