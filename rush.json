@@ -399,7 +399,15 @@
     {
       "packageName": "@interoperating.app/desktop",
       "projectFolder": "interoperating.app/desktop"
-    }
+    },
+    {
+      "packageName": "@interoperating.app/common",
+      "projectFolder": "interoperating.app/common"
+    },
+    {
+      "packageName": "bengo-common",
+      "projectFolder": "libraries/bengo-common"
+    },
     // {
     //   /**
     //    * The NPM package name of the project (must match package.json)

@@ -1,5 +1,5 @@
 {
-  "name": "@interoperating.app/desktop",
+  "name": "bengo-common",
   "private": true,
   "version": "0.0.0",
   "description": "",
@@ -10,10 +10,6 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@interoperating.app/common": "workspace:*",
-    "bengo-common": "workspace:*"
-  },
   "devDependencies": {
     "typescript": "^4.7.4",
     "@types/node": "^10.9.4",
