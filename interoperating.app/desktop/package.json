@@ -1,0 +1,17 @@
+{
+  "name": "@interoperating.app/desktop",
+  "version": "0.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rimraf ./lib/ && tsc -b"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.7.4",
+    "@types/node": "^10.9.4",
+    "rimraf": "^2.6.2"
+  }
+}
