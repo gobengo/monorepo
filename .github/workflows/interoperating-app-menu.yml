@@ -44,8 +44,12 @@ jobs:
       run: npm -w @interoperating.app/menu run make
     - uses: actions/upload-artifact@v3
       with:
-        name: menu-out
-        path: interoperating.app/menu/out/
+        name: interoperating.app/menu/macos/dmg
+        path: interoperating.app/menu/out/*.dmg
+    - uses: actions/upload-artifact@v3
+      with:
+        name: interoperating.app/menu/macos/zip
+        path: interoperating.app/menu/out/make/zip/darwin/arm64/*.zip
 
   # build_on_win:
   #   runs-on: windows-latest
