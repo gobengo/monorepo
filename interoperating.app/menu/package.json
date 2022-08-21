@@ -1,5 +1,6 @@
 {
   "name": "@interoperating.app/menu",
+  "description": "a little menu app to help you develop interoperating apps",
   "productName": "interoperating-app-menu",
   "version": "1.0.0",
   "main": ".webpack/main",
