@@ -50,6 +50,13 @@ jobs:
       with:
         name: interoperating.app/menu/macos/zip
         path: interoperating.app/menu/out/make/zip/darwin/arm64/*.zip
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          interoperating.app/menu/out/make/zip/darwin/arm64/*.zip
+          interoperating.app/menu/out/*.dmg
 
   # build_on_win:
   #   runs-on: windows-latest
