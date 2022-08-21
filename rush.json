@@ -290,7 +290,7 @@
      * your PR branch, and in this situation "rush change" will also automatically invoke "git fetch"
      * to retrieve the latest activity for the remote main branch.
      */
-    // "url": "https://github.com/microsoft/rush-example",
+    "url": "https://github.com/gobengo/monorepo",
 
     /**
      * The default branch name. This tells "rush change" which remote branch to compare against.
@@ -397,12 +397,12 @@
    */
   "projects": [
     {
-      "packageName": "@interoperating.app/desktop",
-      "projectFolder": "interoperating.app/desktop"
-    },
-    {
       "packageName": "@interoperating.app/common",
       "projectFolder": "interoperating.app/common"
+    },
+    {
+      "packageName": "@interoperating.app/menu",
+      "projectFolder": "interoperating.app/menu"
     },
     {
       "packageName": "bengo-common",

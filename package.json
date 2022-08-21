@@ -2,6 +2,6 @@
   "name": "@bengo.is/monorepo",
   "private": true,
   "workspaces": [
-    "interoperating.app/desktop"
+    "interoperating.app/menu"
   ]
 }

@@ -1,0 +1,72 @@
+name: build interoperating.app/menu
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - run: ./common/config/ci/scripts/rush-build
+      - run: ./common/config/ci/scripts/rush-test
+
+  # build_on_linux:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: actions/setup-node@v1
+  #     with:
+  #       node-version: 16
+  #   - run: ./common/config/ci/scripts/rush-build
+  #   - run: ./common/config/ci/scripts/rush-test
+  #   - name: build
+  #     run: npm -w @interoperating.app/menu run make
+
+  build_on_mac:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 16
+    - run: ./common/config/ci/scripts/rush-build
+    - run: ./common/config/ci/scripts/rush-test
+    - name: build
+      run: npm -w @interoperating.app/menu run make
+    - uses: actions/upload-artifact@v3
+      with:
+        name: interoperating.app-menu-macos-dmg
+        path: interoperating.app/menu/out/*.dmg
+    - run: ls -l interoperating.app/menu/out/make/zip/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: interoperating.app-menu-macos-zip
+        path: interoperating.app/menu/out/make/zip/*/*/*.zip
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          interoperating.app/menu/out/make/zip/*/*/*.zip
+          interoperating.app/menu/out/*.dmg
+
+  # build_on_win:
+  #   runs-on: windows-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: actions/setup-node@v1
+  #     with:
+  #       node-version: 16
+  #   - run: ./common/config/ci/scripts/rush-build
+  #   - run: ./common/config/ci/scripts/rush-test
+  #   - name: build
+  #     run: npm -w '@interoperating.app/menu' run make
