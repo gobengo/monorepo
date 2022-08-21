@@ -397,12 +397,12 @@
    */
   "projects": [
     {
-      "packageName": "@interoperating.app/desktop",
-      "projectFolder": "interoperating.app/desktop"
-    },
-    {
       "packageName": "@interoperating.app/common",
       "projectFolder": "interoperating.app/common"
+    },
+    {
+      "packageName": "@interoperating.app/menu",
+      "projectFolder": "interoperating.app/menu"
     },
     {
       "packageName": "bengo-common",
