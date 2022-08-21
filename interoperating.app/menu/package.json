@@ -21,7 +21,9 @@
   "config": {
     "forge": {
       "hooks": "require:./src/forge-hooks.js",
-      "packagerConfig": {},
+      "packagerConfig": {
+        "name": "@interoperating.app/menu"
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
