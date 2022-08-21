@@ -28,6 +28,7 @@ importers:
       '@electron-forge/maker-squirrel': ^6.0.0-beta.65
       '@electron-forge/maker-zip': ^6.0.0-beta.65
       '@electron-forge/plugin-webpack': 6.0.0-beta.65
+      '@types/node': ~18.7.8
       '@typescript-eslint/eslint-plugin': ^5.0.0
       '@typescript-eslint/parser': ^5.0.0
       '@vercel/webpack-asset-relocator-loader': 1.7.3
@@ -54,6 +55,7 @@ importers:
       '@electron-forge/maker-squirrel': 6.0.0-beta.65
       '@electron-forge/maker-zip': 6.0.0-beta.65
       '@electron-forge/plugin-webpack': 6.0.0-beta.65
+      '@types/node': 18.7.8
       '@typescript-eslint/eslint-plugin': 5.33.1_3f49d85f68aa0f5cfbb1eaaf729d6f83
       '@typescript-eslint/parser': 5.33.1_eslint@8.22.0+typescript@4.5.5
       '@vercel/webpack-asset-relocator-loader': 1.7.3
@@ -800,6 +802,10 @@ packages:
 
   /@types/node/16.11.51:
     resolution: {integrity: sha512-h6p1A77pHBDdOcI9y6Wfh9iRGa8lMUZMk2ebHJTNTtRwgbQzgemZow6PW7+Xs7Z0r0IQFY1+iRlcNAkRrf53nA==}
+    dev: true
+
+  /@types/node/18.7.8:
+    resolution: {integrity: sha512-/YP55EMK2341JkODUb8DM9O0x1SIz2aBvyF33Uf1c76St3VpsMXEIW0nxuKkq/5cxnbz0RD9cfwNZHEAZQD3ag==}
     dev: true
 
   /@types/parse-json/4.0.0:
