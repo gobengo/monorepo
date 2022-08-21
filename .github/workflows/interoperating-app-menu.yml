@@ -29,7 +29,7 @@ jobs:
     - run: ./common/config/ci/scripts/rush-build
     - run: ./common/config/ci/scripts/rush-test
     - name: build
-      run: npm run make
+      run: npm -w @interoperating.app/menu run make
 
   build_on_mac:
     runs-on: macos-latest
@@ -41,7 +41,7 @@ jobs:
     - run: ./common/config/ci/scripts/rush-build
     - run: ./common/config/ci/scripts/rush-test
     - name: build
-      run: npm run make
+      run: npm -w @interoperating.app/menu run make
 
   build_on_win:
     runs-on: windows-latest
@@ -53,4 +53,4 @@ jobs:
     - run: ./common/config/ci/scripts/rush-build
     - run: ./common/config/ci/scripts/rush-test
     - name: build
-      run: npm run make
+      run: npm -w @interoperating.app/menu run make
