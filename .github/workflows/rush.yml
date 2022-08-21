@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 16.x
-      - run: node common/scripts/install-run-rush.js change -v
+      # - run: node common/scripts/install-run-rush.js change -v
       - run: node common/scripts/install-run-rush.js install
       - run: node common/scripts/install-run-rush.js rebuild --verbose
       - uses: actions/upload-artifact@v3
