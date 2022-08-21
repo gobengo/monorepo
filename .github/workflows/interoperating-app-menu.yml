@@ -44,12 +44,12 @@ jobs:
       run: npm -w @interoperating.app/menu run make
     - uses: actions/upload-artifact@v3
       with:
-        name: interoperating.app/menu/macos/dmg
+        name: interoperating.app-menu-macos-dmg
         path: interoperating.app/menu/out/*.dmg
     - run: ls -l interoperating.app/menu/out/make/zip/
     - uses: actions/upload-artifact@v3
       with:
-        name: interoperating.app/menu/macos/zip
+        name: interoperating.app-menu-macos-zip
         path: interoperating.app/menu/out/make/zip/*/*/*.zip
     - name: Release
       uses: softprops/action-gh-release@v1
