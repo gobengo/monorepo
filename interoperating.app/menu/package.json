@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "main": ".webpack/main",
   "scripts": {
+    "build": "rimraf ./lib/ && tsc -b",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
