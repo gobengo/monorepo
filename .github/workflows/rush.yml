@@ -19,23 +19,7 @@ jobs:
       # - run: node common/scripts/install-run-rush.js change -v
       - run: node common/scripts/install-run-rush.js install
       - run: node common/scripts/install-run-rush.js rebuild --verbose
-      - uses: actions/upload-artifact@v3
-        with:
-          name: repo.root
-          path: .
-  test:
-    runs-on: ubuntu-latest
-    needs:
-    - install
-    steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: repo.root
-        path: .
-    - run: node common/scripts/install-run-rush.js run test
-  build-electron:
-    runs-on: ubuntu-latest
-    needs:
-    - install
-    steps:
-    - run: npm -w interoperating.app/menu run make
+      - run: node common/scripts/install-run-rush.js test
+
+      # build interoperating.app/menu apps to be released
+      - run: npm -w interoperating.app/menu run make
