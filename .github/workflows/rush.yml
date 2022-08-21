@@ -20,6 +20,3 @@ jobs:
       - run: node common/scripts/install-run-rush.js install
       - run: node common/scripts/install-run-rush.js rebuild --verbose
       - run: node common/scripts/install-run-rush.js test
-
-      # build interoperating.app/menu apps to be released
-      - run: npm -w interoperating.app/menu run make
