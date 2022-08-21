@@ -35,12 +35,16 @@ async function main() {
   console.log('started InteroperatingMenuApp')
 }
 
+const defaultAssetsMenubarDir = path.join(__dirname, 'menubar/assets')
+console.log('defaultAssetsMenubarDir', defaultAssetsMenubarDir)
 class InteroperatingMenuApp {
   static start = () => {
     return new InteroperatingMenuApp
   }
   protected constructor(
-    public menubar = createMenubar()
+    public menubar = createMenubar({
+      dir: defaultAssetsMenubarDir,
+    })
   ) {
     this.initialize();
   }

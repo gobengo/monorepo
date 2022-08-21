@@ -3,7 +3,7 @@ const path = require('path')
 
 const packageRoot = __dirname
 const assetsSrc = path.join(packageRoot, './src/assets')
-const assetsWebpackOut = path.join(packageRoot, './.webpack/assets')
+const outMainMenubarAssets = path.join(packageRoot, './.webpack/main/menubar/assets')
 
 module.exports = {
   /**
@@ -21,7 +21,7 @@ module.exports = {
   plugins: [
     new CopyWebpackPlugin({
       patterns: [
-        { from: assetsSrc, to: assetsWebpackOut }
+        { from: assetsSrc, to: outMainMenubarAssets },
       ]
     })
   ]
