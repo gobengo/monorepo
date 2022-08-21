@@ -24,6 +24,7 @@ importers:
     specifiers:
       '@electron-forge/cli': ^6.0.0-beta.65
       '@electron-forge/maker-deb': ^6.0.0-beta.65
+      '@electron-forge/maker-pkg': ~6.0.0-beta.65
       '@electron-forge/maker-rpm': ^6.0.0-beta.65
       '@electron-forge/maker-squirrel': ^6.0.0-beta.65
       '@electron-forge/maker-zip': ^6.0.0-beta.65
@@ -51,6 +52,7 @@ importers:
     devDependencies:
       '@electron-forge/cli': 6.0.0-beta.65
       '@electron-forge/maker-deb': 6.0.0-beta.65
+      '@electron-forge/maker-pkg': 6.0.0-beta.65
       '@electron-forge/maker-rpm': 6.0.0-beta.65
       '@electron-forge/maker-squirrel': 6.0.0-beta.65
       '@electron-forge/maker-zip': 6.0.0-beta.65
@@ -295,6 +297,17 @@ packages:
       '@electron-forge/shared-types': 6.0.0-beta.65
     optionalDependencies:
       electron-installer-debian: 3.1.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@electron-forge/maker-pkg/6.0.0-beta.65:
+    resolution: {integrity: sha512-K8xtqFg+3RAIe1FszMCOjy4nVF3J+EJg1/FIbgFtdhWtEa7f0KZR6J87PhHsOhhZjzioYCOYUuh5rqPaVWKNHQ==}
+    engines: {node: '>= 14.17.5'}
+    dependencies:
+      '@electron-forge/maker-base': 6.0.0-beta.65
+      '@electron-forge/shared-types': 6.0.0-beta.65
+      electron-osx-sign: 0.5.0
     transitivePeerDependencies:
       - supports-color
     dev: true
