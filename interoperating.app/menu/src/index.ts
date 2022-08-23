@@ -80,7 +80,7 @@ function handleOpenUrl(mb: Menubar) {
           {
             iss: 'did:web:bengo.is',
             sub: 'did:web:bengo.is',
-            "https://www.w3.org/TR/activitypub/": "activitypub://",
+            "https://www.w3.org/TR/activitypub/": "activitypub://me",
           },
           'secret',
         )
@@ -90,7 +90,10 @@ function handleOpenUrl(mb: Menubar) {
         }
         console.log({ oidcRequest })
         const respondToRedirectUri = new URL(oidcRequest.redirectUri)
-        respondToRedirectUri.hash = `id_token=${idToken}`
+        const hashParams = new URLSearchParams
+        hashParams.set('id_token', idToken)
+        respondToRedirectUri.hash = hashParams.toString()
+        console.log('responding by opening', respondToRedirectUri.toString())
         shell.openExternal(respondToRedirectUri.toString())
         // mb.showWindow()
         break;
