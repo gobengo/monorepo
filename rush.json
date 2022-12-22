@@ -407,7 +407,7 @@
     {
       "packageName": "bengo-common",
       "projectFolder": "libraries/bengo-common"
-    },
+    }
     // {
     //   /**
     //    * The NPM package name of the project (must match package.json)
