@@ -6,7 +6,7 @@
   "scripts": {
     "build": "",
     "start": "node --loader=ts-node/esm index.ts",
-    "test": "ava"
+    "test": "NODE_OPTIONS='--require=./suppress-experimental-warnings.cjs' ava"
   },
   "author": "",
   "license": "ISC",
