@@ -37,9 +37,9 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v1
       with:
-        node-version: 16
+        node-version: 18
     - run: ./common/config/ci/scripts/rush-build
-    - run: ./common/config/ci/scripts/rush-test
+    - run: node common/scripts/install-run-rush.js test -t '@interoperating.app/menu'
     - name: build
       run: npm -w @interoperating.app/menu run make
     - uses: actions/upload-artifact@v3
