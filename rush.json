@@ -407,6 +407,10 @@
     {
       "packageName": "bengo-common",
       "projectFolder": "libraries/bengo-common"
+    },
+    {
+      "packageName": "@bengo.is/activitypub-core-example",
+      "projectFolder": "experiments/activitypub-core-example"
     }
     // {
     //   /**
