@@ -145,7 +145,7 @@ async function renderActivityPubExpressEntity(options: {
 /**
  * Given a node.js listener address, return a URL where it can be fetched over HTTP
  */
-function addressHttpURL(address: AddressInfo|string|null): URL {
+export function addressHttpURL(address: Pick<AddressInfo, 'address'|'port'>|string|null): URL {
   if ( ! address) {
     throw new Error('cannot format null address')
   }
