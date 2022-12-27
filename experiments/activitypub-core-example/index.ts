@@ -189,8 +189,8 @@ function createMockDbAdapter(
     console.log('findEntityById', id.toString())
     return createPersonActor(createActorOptions(id.pathname))
   }
-  const findOne: DbAdapter['findOne'] = async (args: unknown) => {
-    console.log('findOne', args)
+  const findOne: DbAdapter['findOne'] = async function (args: unknown) {
+    console.log('findOne', arguments)
     return createPersonActor(createActorOptions('/entity/default'))
   }
   const getActorByUserId: DbAdapter['getActorByUserId'] = async (userId: string) => {
