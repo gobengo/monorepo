@@ -9,6 +9,8 @@ import pinoHttpPrint from 'pino-http-print';
 import { AP, Plugin } from 'activitypub-core-types';
 import assert from "node:assert";
 import { fileURLToPath } from "node:url";
+import { ensureTrailingSlash } from "./url.js";
+
 if (import.meta.url.startsWith('file:')) {
   const modulePath = fileURLToPath(import.meta.url);
   if (process.argv[1] === modulePath) {
@@ -160,10 +162,6 @@ async function createDbAdapter(
   } as DbAdapter
 }
 
-function ensureTrailingSlash(url: URL): URL {
-  if (url.pathname.endsWith('/')) return url;
-  return new URL(`${url.toString()}/`)
-}
 function withoutLeadingSlash(path: string): string {
   if (path.startsWith('/')) return path.slice(1);
   return path
