@@ -17,9 +17,9 @@ interface IActorRepository {
 }
 
 class SingleActorRepository implements IActorRepository {
-  constructor(private id: URL, private actor: Actor) {}
+  constructor(public actorId: URL, private actor: Actor) {}
   async getById(id: URL) {
-    if (this.id !== id) {
+    if (this.actorId.toString() !== id.toString()) {
       return null;
     }
     return this.actor
@@ -40,42 +40,93 @@ test('SingleActorRepository can get by id', async (t) => {
   t.is(found?.uuid, actor1.uuid, 'found actor by id')
 })
 
-class ActivityPubEntityFinder {
+class MultiActorRepository implements IActorRepository {
   constructor(
     private options: {
-      actors: IActorRepository,
-      locality: UrlLocality,
+      actorsUrl: URL,
+      byPathSegment: {
+        get(pathSegment: string): Promise<null|Actor>,
+      },
     }
-  ) {}
-  getById(url: URL): null|Actor {
-    if ( ! this.options.locality(url)) {
+  ) {
+    if ( ! options.actorsUrl.toString().endsWith('/')) {
+      throw new Error('actorsUrl must end with /')
+    }
+  }
+  async getByPathSegment(pathSegment: string): Promise<null|Actor> {
+    return this.options.byPathSegment.get(pathSegment) || null
+  }
+  async getById(url: URL) {
+    const actorsUrlString = this.options.actorsUrl.toString();
+    if ( ! url.pathname.startsWith(actorsUrlString)) {
       return null;
     }
-    return null;
+    const actorSuffix = url.toString().slice(actorsUrlString.length)
+    const actorPathSegment = actorSuffix.split('/')[0]
+    return this.getByPathSegment(actorPathSegment)
   }
 }
 
-/**
- * represents a collection of 'local' resources.
- */
-type UrlLocality = (url: URL) => boolean
+test('MultiActorRepository can get by path segment and id', async t => {
+  const actor1 = createMockActor();
+  const actor2 = createMockActor();
+  const byPathSegmentMap = new Map([
+    ['actor1', actor1],
+    ['actor2', actor2],
+  ])
+  const actors = new MultiActorRepository({
+    actorsUrl: new URL('http://localhost/actors/'),
+    byPathSegment: {
+      get: async (pathSegment: string) => byPathSegmentMap.get(pathSegment) ?? null
+    }
+  })
+  t.is(await actors.getByPathSegment('actor1'), actor1)
+  t.is(await actors.getByPathSegment('actor2'), actor2)
+  t.is(await actors.getByPathSegment('notreal'), null)
+})
 
-function createBaseUrlLocality(baseUrl: URL): UrlLocality {
-  return (url: URL) => url.toString().startsWith(baseUrl.toString())
+class ActivityPubActorFinder {
+  static fromSingleActorRepository(repo: SingleActorRepository): ActivityPubActorFinder {
+    return new ActivityPubActorFinder({
+      actors: repo,
+      urlToActorId: createActorUrlResolver(repo.actorId),
+    })
+  }
+  constructor(
+    private options: {
+      actors: IActorRepository,
+      urlToActorId: IActorUrlResolver,
+    }
+  ) {}
+  async getByUrl(url: URL): Promise<null|Actor> {
+    const actorId = this.options.urlToActorId(url);
+    if ( ! actorId) { return null; }
+    const fromRepo = await this.options.actors.getById(actorId)
+    return fromRepo;
+  }
 }
 
-test.skip('ActivityPubEntityFinder can find actor by id', async (t) => {
-  const localityBaseUrl = new URL('http://localhost')
-  const locality = createBaseUrlLocality(new URL('http://localhost'))
-  const actorUrl = new URL('actor', localityBaseUrl)
-  t.is(actorUrl.toString(), 'http://localhost/actor')
+test('ActivityPubActorFinder with SingleActorRepository can get actor by url', async (t) => {
+  const actorUrl = new URL('http://localhost/actor/')
   const actor1 = createMockActor()
-  const actors = new SingleActorRepository(actorUrl, actor1)
-
-  const finder = new ActivityPubEntityFinder({ actors, locality })
-  const found = finder.getById(actorUrl);
-  t.assert(found, 'found actor by id')
+  const finder = ActivityPubActorFinder.fromSingleActorRepository(new SingleActorRepository(actorUrl, actor1))
+  const cases = [
+    { url: new URL('http://localhost/actor/'), actor: actor1 },
+    { url: new URL('http://localhost/actor'), actor: null },
+    { url: new URL('http://localhost/actor/outbox/'), actor: actor1 },
+    { url: new URL('http://localhost/actor1/outbox/'), actor: null },
+  ]
+  for (const { url, actor } of cases) {
+    const found = await finder.getByUrl(url);
+    if (actor) {
+      t.is(found?.uuid, actor.uuid, `found actor by url ${url}`)
+    } else {
+      t.is(found, null, `found no actor by url ${url}`)
+    }
+  }
 })
+
+test.todo('ActivityPubActorFinder with MultiActorRepository can get actor by url')
 
 /**
  * Given a URL, return a URL that should be used to fetch the resource's relevant ActivityPub actor.
