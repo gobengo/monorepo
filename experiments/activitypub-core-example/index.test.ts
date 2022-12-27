@@ -157,7 +157,7 @@ function createActorUrlResolver(actorUrl: URL): IUrlResolver {
       test: (url) => actorUrl.toString() === url.toString(),
       resolve: (url) => url,
     },
-    // resolve /outbox to /
+    // resolve /outbox/ to /
     {
       test: (url) => {
         // createPathSegmentUrlSpace baseUrl must end with a slash, but the provided actorUrl may not
@@ -166,12 +166,12 @@ function createActorUrlResolver(actorUrl: URL): IUrlResolver {
               baseUrlPathMatchers: [], }
           : { baseUrl: new URL('/', actorUrl),
               baseUrlPathMatchers: actorUrl.pathname.slice(1).split('/').map(pathSegment => matchers.exact(pathSegment)),}
-        const result = createPathSegmentUrlSpace(baseUrl, [...baseUrlPathMatchers, matchers.exact('outbox')]).includes(url)
+        const result = createPathSegmentUrlSpace(baseUrl, [...baseUrlPathMatchers, matchers.exact('outbox')], true).includes(url)
         return result;
       },
       resolve: (outboxUrl) => {
-        // note: because there is no trailing slash on the outbox matcher, this will go from actor/outbox to actor
-        const actorUrl = withoutTrailingSlash(new URL('.', outboxUrl))
+        // note: because there is a trailing slash on the outbox matcher, this will go from actor/outbox to actor
+        const actorUrl = new URL('..', outboxUrl)
         return actorUrl
       }
     }
@@ -182,14 +182,61 @@ test('createActorUrlResolver can resolve URLs', async (t) => {
   const cases = [
     // actor at /
     { actor: new URL('http://localhost/'), url: new URL('http://localhost/') },
-    { actor: new URL('http://localhost/'), url: new URL('http://localhost/outbox') },
+    { actor: new URL('http://localhost/'), url: new URL('http://localhost/outbox/') },
+    // cant resolve outbox without trailing slash
+    { actor: new URL('http://localhost/'), url: new URL('http://localhost/outbox'), expectUnresolvable: true },
+    { actor: new URL('http://localhost/'), url: new URL('http://wrongdomain.com/outbox'), expectUnresolvable: true },
     // actor at /defaultActor
-    { actor: new URL('http://localhost/defaultActor'), url: new URL('http://localhost/defaultActor') },
-    { actor: new URL('http://localhost/defaultActor'), url: new URL('http://localhost/defaultActor/outbox') },
+    { actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/') },
+    { actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/outbox/') },
+    // no trailing slash on actor url should not resolve (it's a different URL. If you want this to work, redirect from '' -> '/' and then resolution will go from there)
+    { actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor'), expectUnresolvable: true },
   ]
-  for (const { actor, url } of cases) {
+  for (const { actor, url, expectUnresolvable=false } of cases) {
     const resolve = createActorUrlResolver(actor)
-    t.is(resolve(url)?.toString(), actor.toString(), `resolves '${url.toString()}' to actor url at '${actor.toString()}'`)
+    const resolution = resolve(url)
+    if (expectUnresolvable) {
+      t.is(resolution, null, `cannot resolve ${url.toString()}`)
+    } else {
+      t.is(resolution?.toString(), actor.toString(), `resolves '${url.toString()}' to actor url at '${actor.toString()}'`)
+    }
+  }
+})
+
+function createMultiActorUrlResolver(actorsBaseUrl: URL): IUrlResolver {
+  const actorsBaseUrlString = actorsBaseUrl.toString()
+  if ( ! actorsBaseUrlString.endsWith('/')) {
+    throw new Error(`actorsBaseUrl must end with a slash, but it is '${actorsBaseUrlString}'`)
+  }
+  return (url) => {
+    const actorsBaseUrlString = actorsBaseUrl.toString()
+    if ( ! url.toString().startsWith(actorsBaseUrlString)) {
+      // url is not in the actorsBaseUrl space
+      return null;
+    }
+    const singleActorPath = url.toString().slice(actorsBaseUrlString.length)
+    const actorPathSegment = singleActorPath.split('/')[0]
+    const actorUrl = new URL(`${actorPathSegment}/`, actorsBaseUrl)
+    const actorResolver = createActorUrlResolver(actorUrl)
+    const actorResolution = actorResolver(url)
+    return actorResolution;
+  }
+}
+
+test('createMultiActorUrlResolver can resolve URLs', async (t) => {
+  const cases = [
+    // actors at /
+    { actorsBase: new URL('http://localhost/'), actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/') },
+    // { actorsBase: new URL('http://localhost/'), actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/outbox/') },
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor/') },
+    // cant resolve actor url without trailing slash (if you want this to work, redirect from sans-trailing-slash to with-trailing-slash and then resolution will go from there)
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor'), expectUnresolvable: true },
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor/wtf'), expectUnresolvable: true },
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor/outbox/') },
+  ]
+  for (const { actorsBase, actor, url, expectUnresolvable=false } of cases) {
+    const resolve = createMultiActorUrlResolver(actorsBase)
+    t.is(resolve(url)?.toString(), expectUnresolvable ? undefined : actor.toString(), `resolves '${url.toString()}' to actor url at '${actor.toString()}'`)
   }
 })
 
