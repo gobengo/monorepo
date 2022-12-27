@@ -1,0 +1,26 @@
+specVersion: 0.34.0
+name: func-ts-0
+runtime: typescript
+registry: docker.io/gobengo
+image: docker.io/gobengo/func-ts-0:latest
+imageDigest: ""
+created: 2022-12-25T07:52:14.947919-06:00
+invocation:
+  format: http
+build:
+  buildpacks: []
+  builder: pack
+  buildEnvs:
+  - name: BP_NODE_RUN_SCRIPTS
+    value: build
+run:
+  volumes: []
+  envs: []
+deploy:
+  namespace: ""
+  annotations: {}
+  options: {}
+  labels: []
+  healthEndpoints:
+    liveness: /health/liveness
+    readiness: /health/readiness
