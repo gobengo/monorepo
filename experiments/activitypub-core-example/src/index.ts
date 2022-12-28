@@ -9,7 +9,7 @@ import pinoHttpPrint from 'pino-http-print';
 import { AP, Plugin } from 'activitypub-core-types';
 import assert from "node:assert";
 import { fileURLToPath } from "node:url";
-import { ensureTrailingSlash } from "./src/url.js";
+import { ensureTrailingSlash } from "./url.js";
 
 if (import.meta.url.startsWith('file:')) {
   const modulePath = fileURLToPath(import.meta.url);

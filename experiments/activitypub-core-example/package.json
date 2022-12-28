@@ -5,8 +5,8 @@
   "description": "",
   "scripts": {
     "build": "",
-    "start": "node --loader=ts-node/esm index.ts",
-    "test": "NODE_OPTIONS='--require=./suppress-experimental-warnings.cjs' ava"
+    "start": "node --loader=ts-node/esm src/index.ts",
+    "test": "NODE_OPTIONS='--require=./src/suppress-experimental-warnings.cjs' ava"
   },
   "author": "",
   "license": "ISC",

@@ -1,9 +1,9 @@
 import test from "ava";
 import { addressHttpURL } from "./index.js";
-import { ActivityPubActorFinder, createActorUrlResolver, createMultiActorUrlResolver } from "./src/actor-finder.js";
-import { IActorRepository, MultiActorRepository, SingleActorRepository } from "./src/actor-repository.js";
-import { Actor, createMockActor } from "./src/actor.js";
-import { composeTestedUrlResolver, createPathSegmentUrlSpace, createTestedUrlResolver, IUrlResolver, matchers, UrlSpace, withoutTrailingSlash } from "./src/url.js";
+import { ActivityPubActorFinder, createActorUrlResolver, createMultiActorUrlResolver } from "./actor-finder.js";
+import { IActorRepository, MultiActorRepository, SingleActorRepository } from "./actor-repository.js";
+import { Actor, createMockActor } from "./actor.js";
+import { composeTestedUrlResolver, createPathSegmentUrlSpace, createTestedUrlResolver, IUrlResolver, matchers, UrlSpace, withoutTrailingSlash } from "./url.js";
 
 test('addressHttpURL', async (t) => {
   t.is(addressHttpURL({
