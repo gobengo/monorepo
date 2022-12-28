@@ -1,7 +1,7 @@
 /**
  * canonical rfc6838 media type for activitystreams2
  */
-export const mediaType = 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"' as const
+export const mediaType = 'application/activity+json' as const
 
 /**
  * canonical json-ld @context URL for activitystreams2

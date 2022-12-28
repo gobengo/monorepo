@@ -12,27 +12,29 @@ export class ActorServer {
     app?: express.Express,
     publicBaseUrl?: URL,
   }={}) {
-    const { app = express(), publicBaseUrl = new URL('http://localhost') } = options;
+    const { app = express() } = options;
     const activityPubMountPath = '/.activitypub/'
-    const handleWithActivityPubCore = createActivityPubCoreHandler({
-      activityPubMountPath,
-      publicBaseUrl,
-    })
     app
     .use(/^\/$/, redirectActivityPubGet(activityPubMountPath))
-    .use((function () {
-      return express()
-      .use(activityPubMountPath, handleWithActivityPubCore)
-      .use(function (req, res, next) {
-        const prefixes = ['/.well-known/webfinger'];
-        for (const _ of prefixes) {
-          if (req.url.startsWith(_)) {
-            return handleWithActivityPubCore(req, res, next)
-          }
-          next();
-        }
+    .use(function (req, res, next) {
+      const serverBaseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}`)
+      const activityPubBaseUrl = new URL(activityPubMountPath, serverBaseUrl)
+      const handleWithActivityPubCore = createActivityPubCoreHandler({
+        publicBaseUrl: activityPubBaseUrl,
       })
-    })())
+      const handleWithExpress = express()
+        .use(activityPubMountPath, handleWithActivityPubCore)
+        .use(function (req, res, next) {
+          const prefixes = ['/.well-known/webfinger'];
+          for (const _ of prefixes) {
+            if (req.url.startsWith(_)) {
+              return handleWithActivityPubCore(req, res, next)
+            }
+            next();
+          }
+        });
+      handleWithExpress(req, res, next)
+    })
     app.get('/', (req, res) => {
       res.writeHead(200)
       res.send(`
@@ -45,25 +47,21 @@ export class ActorServer {
 }
 
 export function createActivityPubCoreHandler(options: {
-  activityPubMountPath: string
   publicBaseUrl: URL,
 }): express.Handler {
   const {
-    activityPubMountPath,
     publicBaseUrl,
   } = options;
   return function handleWithActivityPubCore(req, res, next) {
+    console.log('in handleWithActivityPubCore', {
+      originalUrl: req.originalUrl
+    });
     (async () => {
-      console.log(`in ${activityPubMountPath}`, {
-        url: req.url,
-        host: req.headers.host,
-      })
-      const requestHost = req.headers.host;
+      const requestHost = req.get('host')
       assert.ok(requestHost, 'req.headers.host must be truthy')
       const dbAdapter = await createDbAdapter({
-        baseUrl: new URL(`${req.protocol}://${requestHost}${activityPubMountPath}`),
+        baseUrl: new URL(`${req.protocol}://${requestHost}${req.originalUrl}`),
         host: requestHost,
-        activityPubMountPath,
         publicBaseUrl,
       })
       const handleActivityPub = createActivityPubExpress({
@@ -111,8 +109,13 @@ function createMockDbAdapter(
   options: DatabaseAdapterCreationOptions
 ): Pick<DbAdapter, 'findEntityById'|'findOne'|'getActorByUserId'> {
   const createActorOptions = (actorPath: string): Parameters<typeof createPersonActor>[0] => {
-    const publicActivityPubUrl = ensureTrailingSlash(new URL(`${withoutLeadingSlash(options.activityPubMountPath)}`, options.publicBaseUrl))
+    const publicActivityPubUrl = ensureTrailingSlash(options.publicBaseUrl)
     const entityUrl = ensureTrailingSlash(new URL(withoutLeadingSlash(actorPath), publicActivityPubUrl))
+    console.log('in mock adater', {
+      actorPath,
+      entityUrl: entityUrl.toString(),
+      publicActivityPubUrl: publicActivityPubUrl.toString(),
+    })
     return {
       id: options.publicBaseUrl,
       preferredUsername: 'default',
@@ -202,8 +205,6 @@ function createAuthAdapter(_console=console): AuthAdapter {
 
 interface DatabaseAdapterCreationOptions {
   baseUrl: URL
-  /** HTTP Path base that activitypub-core middleware is mounted at */
-  activityPubMountPath: string
   /** external-facing hostname of request/server */
   host: string,
   /** external-facing base URL of request/server */
