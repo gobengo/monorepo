@@ -13,6 +13,10 @@ export type Actor = Omit<APCore.Actor, 'type'> & {
   // this type is a bit more accurate than the activitypub-core-types type
   type: ActorType
 }
+export type OrderedCollection = Omit<APCore.OrderedCollection, 'type'> & {
+  // this type is a bit more accurate than the activitypub-core-types type
+  type: 'OrderedCollection'
+}
 export type ActorTypeString = typeof APCore.ActorTypes[keyof typeof APCore.ActorTypes]
 export type ActorType = ActorTypeString | ActorTypeString[]
 
@@ -77,4 +81,23 @@ function asActorType(type: unknown): ActorType {
       return validTypes[0]
   }
   return validTypes
+}
+
+export function asOrderedCollection(object: unknown): OrderedCollection {
+  assert(typeof object === 'object' && object !== null)
+  assert(hasOwnProperty(object, 'type'))
+  const typeArray = Array.isArray(object.type) ? object.type : [object.type];
+  if ( ! typeArray.includes('OrderedCollection')) {
+    throw new Error('not an ordered collection')
+  }
+  if (hasOwnProperty(object, 'totalItems')) {
+    assert(typeof object.totalItems === 'number')
+  }
+  assert(hasOwnProperty(object, 'orderedItems') && Array.isArray(object.orderedItems))
+  const orderedCollection = {
+    ...object,
+    type: 'OrderedCollection' as const,
+    orderedItems: Array.from(object.orderedItems),
+  }
+  return orderedCollection;
 }

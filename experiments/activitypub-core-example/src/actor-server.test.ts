@@ -1,7 +1,7 @@
 import test from "ava";
 import { ActorServer } from "./actor-server.js";
 import { withHttpServer } from "./http.js";
-import { mediaType as apMediaType } from "./activitypub.js";
+import { mediaType as apMediaType, asOrderedCollection } from "./activitypub.js";
 import { assertValidActor } from "./actor-test.js";
 import assert from 'node:assert';
 import { actorFetcher } from "./activitypub.js";
@@ -34,6 +34,8 @@ test('ActorServer serves actor outbox', t => withHttpServer(ActorServer.create()
     }
   }))
   t.is(response.status, 200);
-  const outbox = await response.json() as unknown;
+  const outboxObject = await response.json() as unknown;
+  console.log({ outboxObject })
+  const outbox = asOrderedCollection(outboxObject);
   console.log({ outbox })
 }));
