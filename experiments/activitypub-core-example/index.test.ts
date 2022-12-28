@@ -41,24 +41,27 @@ test('SingleActorRepository can get by id', async (t) => {
 })
 
 class MultiActorRepository implements IActorRepository {
+  public actorsUrl: URL
   constructor(
     private options: {
       actorsUrl: URL,
-      byPathSegment: {
-        get(pathSegment: string): Promise<null|Actor>,
-      },
+      byPathSegment:
+      | Pick<Map<string,Actor>, 'get'>
+      | { get(pathSegment: string): Promise<Actor|undefined> },
     }
   ) {
+    this.actorsUrl = options.actorsUrl
     if ( ! options.actorsUrl.toString().endsWith('/')) {
       throw new Error('actorsUrl must end with /')
     }
   }
   async getByPathSegment(pathSegment: string): Promise<null|Actor> {
-    return this.options.byPathSegment.get(pathSegment) || null
+    const actor = await this.options.byPathSegment.get(pathSegment)
+    return actor ?? null;
   }
   async getById(url: URL) {
     const actorsUrlString = this.options.actorsUrl.toString();
-    if ( ! url.pathname.startsWith(actorsUrlString)) {
+    if ( ! url.toString().startsWith(actorsUrlString)) {
       return null;
     }
     const actorSuffix = url.toString().slice(actorsUrlString.length)
@@ -76,9 +79,7 @@ test('MultiActorRepository can get by path segment and id', async t => {
   ])
   const actors = new MultiActorRepository({
     actorsUrl: new URL('http://localhost/actors/'),
-    byPathSegment: {
-      get: async (pathSegment: string) => byPathSegmentMap.get(pathSegment) ?? null
-    }
+    byPathSegment: byPathSegmentMap,
   })
   t.is(await actors.getByPathSegment('actor1'), actor1)
   t.is(await actors.getByPathSegment('actor2'), actor2)
@@ -90,6 +91,12 @@ class ActivityPubActorFinder {
     return new ActivityPubActorFinder({
       actors: repo,
       urlToActorId: createActorUrlResolver(repo.actorId),
+    })
+  }
+  static fromMultiActorRepository(repo: MultiActorRepository): ActivityPubActorFinder {
+    return new ActivityPubActorFinder({
+      actors: repo,
+      urlToActorId: createMultiActorUrlResolver(repo.actorsUrl),
     })
   }
   constructor(
@@ -126,7 +133,41 @@ test('ActivityPubActorFinder with SingleActorRepository can get actor by url', a
   }
 })
 
-test.todo('ActivityPubActorFinder with MultiActorRepository can get actor by url')
+test('ActivityPubActorFinder with MultiActorRepository can get actor by url', async t => {
+  const actor1 = createMockActor();
+  const actor2 = createMockActor();
+  const actorsUrl = new URL('http://localhost/foo/actors/')
+  const actors = new MultiActorRepository({
+    actorsUrl,
+    byPathSegment: new Map([
+      ['actor1', actor1],
+      ['actor2', actor2],
+    ])
+  })
+  const finder = new ActivityPubActorFinder({
+    actors,
+    urlToActorId: createMultiActorUrlResolver(actorsUrl),
+  })
+  const cases = [
+    { url: new URL('actor1/', actorsUrl), actor: actor1 },
+    { url: new URL('actor2/', actorsUrl), actor: actor2 },
+    { url: new URL('actor3/', actorsUrl), actor: null },
+    // will fail because no trailing slash
+    { url: new URL('actor1', actorsUrl), actor: null },
+    { url: new URL('actor1/outbox/', actorsUrl), actor: actor1 },
+    { url: new URL('actor2/outbox/', actorsUrl), actor: actor2 },
+    // will fail because no trailing slash
+    { url: new URL('actor1/outbox', actorsUrl), actor: null },
+  ]
+  for (const { url, actor } of cases) {
+    const found = await finder.getByUrl(url);
+    if (actor) {
+      t.is(found?.uuid, actor.uuid, `found actor by url ${url}`)
+    } else {
+      t.is(found, null, `found no actor by url ${url}`)
+    }
+  }
+})
 
 /**
  * Given a URL, return a URL that should be used to fetch the resource's relevant ActivityPub actor.
@@ -268,8 +309,7 @@ function createMultiActorUrlResolver(actorsBaseUrl: URL): IUrlResolver {
     const singleActorPath = url.toString().slice(actorsBaseUrlString.length)
     const actorPathSegment = singleActorPath.split('/')[0]
     const actorUrl = new URL(`${actorPathSegment}/`, actorsBaseUrl)
-    const actorResolver = createActorUrlResolver(actorUrl)
-    const actorResolution = actorResolver(url)
+    const actorResolution = createActorUrlResolver(actorUrl)(url)
     return actorResolution;
   }
 }
