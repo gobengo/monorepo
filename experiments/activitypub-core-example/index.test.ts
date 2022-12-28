@@ -1,6 +1,9 @@
 import test from "ava";
 import { addressHttpURL } from "./index.js";
-import { withoutTrailingSlash } from "./url.js";
+import { ActivityPubActorFinder, createActorUrlResolver, createMultiActorUrlResolver } from "./src/actor-finder.js";
+import { IActorRepository, MultiActorRepository, SingleActorRepository } from "./src/actor-repository.js";
+import { Actor, createMockActor } from "./src/actor.js";
+import { composeTestedUrlResolver, createPathSegmentUrlSpace, createTestedUrlResolver, IUrlResolver, matchers, UrlSpace, withoutTrailingSlash } from "./src/url.js";
 
 test('addressHttpURL', async (t) => {
   t.is(addressHttpURL({
@@ -9,29 +12,6 @@ test('addressHttpURL', async (t) => {
   }).toString(), 'http://localhost:3000/')
 })
 
-type UUID = string
-type Actor = { uuid: UUID }
-
-interface IActorRepository {
-  getById(id: URL): Promise<null|Actor>
-}
-
-class SingleActorRepository implements IActorRepository {
-  constructor(public actorId: URL, private actor: Actor) {}
-  async getById(id: URL) {
-    if (this.actorId.toString() !== id.toString()) {
-      return null;
-    }
-    return this.actor
-  }
-}
-
-function createMockActor(): Actor {
-  return {
-    uuid: `uuid-${Math.random().toString().slice(2)}`,
-  }
-}
-
 test('SingleActorRepository can get by id', async (t) => {
   const actorUrl = new URL('http://localhost/actor')
   const actor1 = createMockActor()
@@ -39,36 +19,6 @@ test('SingleActorRepository can get by id', async (t) => {
   const found = await actors.getById(actorUrl)
   t.is(found?.uuid, actor1.uuid, 'found actor by id')
 })
-
-class MultiActorRepository implements IActorRepository {
-  public actorsUrl: URL
-  constructor(
-    private options: {
-      actorsUrl: URL,
-      byPathSegment:
-      | Pick<Map<string,Actor>, 'get'>
-      | { get(pathSegment: string): Promise<Actor|undefined> },
-    }
-  ) {
-    this.actorsUrl = options.actorsUrl
-    if ( ! options.actorsUrl.toString().endsWith('/')) {
-      throw new Error('actorsUrl must end with /')
-    }
-  }
-  async getByPathSegment(pathSegment: string): Promise<null|Actor> {
-    const actor = await this.options.byPathSegment.get(pathSegment)
-    return actor ?? null;
-  }
-  async getById(url: URL) {
-    const actorsUrlString = this.options.actorsUrl.toString();
-    if ( ! url.toString().startsWith(actorsUrlString)) {
-      return null;
-    }
-    const actorSuffix = url.toString().slice(actorsUrlString.length)
-    const actorPathSegment = actorSuffix.split('/')[0]
-    return this.getByPathSegment(actorPathSegment)
-  }
-}
 
 test('MultiActorRepository can get by path segment and id', async t => {
   const actor1 = createMockActor();
@@ -85,33 +35,6 @@ test('MultiActorRepository can get by path segment and id', async t => {
   t.is(await actors.getByPathSegment('actor2'), actor2)
   t.is(await actors.getByPathSegment('notreal'), null)
 })
-
-class ActivityPubActorFinder {
-  static fromSingleActorRepository(repo: SingleActorRepository): ActivityPubActorFinder {
-    return new ActivityPubActorFinder({
-      actors: repo,
-      urlToActorId: createActorUrlResolver(repo.actorId),
-    })
-  }
-  static fromMultiActorRepository(repo: MultiActorRepository): ActivityPubActorFinder {
-    return new ActivityPubActorFinder({
-      actors: repo,
-      urlToActorId: createMultiActorUrlResolver(repo.actorsUrl),
-    })
-  }
-  constructor(
-    private options: {
-      actors: IActorRepository,
-      urlToActorId: IActorUrlResolver,
-    }
-  ) {}
-  async getByUrl(url: URL): Promise<null|Actor> {
-    const actorId = this.options.urlToActorId(url);
-    if ( ! actorId) { return null; }
-    const fromRepo = await this.options.actors.getById(actorId)
-    return fromRepo;
-  }
-}
 
 test('ActivityPubActorFinder with SingleActorRepository can get actor by url', async (t) => {
   const actorUrl = new URL('http://localhost/actor/')
@@ -144,10 +67,7 @@ test('ActivityPubActorFinder with MultiActorRepository can get actor by url', as
       ['actor2', actor2],
     ])
   })
-  const finder = new ActivityPubActorFinder({
-    actors,
-    urlToActorId: createMultiActorUrlResolver(actorsUrl),
-  })
+  const finder = ActivityPubActorFinder.fromMultiActorRepository(actors)
   const cases = [
     { url: new URL('actor1/', actorsUrl), actor: actor1 },
     { url: new URL('actor2/', actorsUrl), actor: actor2 },
@@ -169,32 +89,6 @@ test('ActivityPubActorFinder with MultiActorRepository can get actor by url', as
   }
 })
 
-/**
- * Given a URL, return a URL that should be used to fetch the resource's relevant ActivityPub actor.
- * Usually this is a purely syntactical transformation.
- */
-type IActorUrlResolver = (url: URL) => URL|null
-
-// class createActorUrlResolver(): IActorUrlResolver {
-
-// }
-
-type IUrlResolver = (url: URL) => URL|null
-
-interface ITestedUrlResolverOptions {
-  test: (url: URL) => boolean,
-  resolve: IUrlResolver  
-}
-
-function createTestedUrlResolver(options: ITestedUrlResolverOptions): IUrlResolver {
-  return (url: URL) => {
-    if (options.test(url)) {
-      return options.resolve(url);
-    }
-    return null;
-  };
-}
-
 test('createTestedUrlResolver can resolve URLs', async (t) => {
   const actorsUrl = new URL('http://localhost/actors/')
   const resolve = createTestedUrlResolver({
@@ -212,19 +106,6 @@ test('createTestedUrlResolver can resolve URLs', async (t) => {
   )
 })
 
-function composeTestedUrlResolver(testResolveConfigs: Array<ITestedUrlResolverOptions>): IUrlResolver {
-  return (url) => {
-    for (const config of testResolveConfigs) {
-      const singleResolve = createTestedUrlResolver(config)
-      const resolution = singleResolve(url)
-      if (resolution) {
-        return resolution;
-      }
-    }
-    return null;
-  }
-}
-
 test('composeTestedUrlResolver can resolve URLs', async (t) => {
   const resolve = composeTestedUrlResolver([
     {
@@ -241,34 +122,6 @@ test('composeTestedUrlResolver can resolve URLs', async (t) => {
   t.is(resolve(new URL('/b', baseUrl))?.toString(), 'http://localhost/b')
   t.is(resolve(new URL('/c', baseUrl)), null)
 })
-
-function createActorUrlResolver(actorUrl: URL): IUrlResolver {
-  return composeTestedUrlResolver([
-    // resolve / to /
-    {
-      test: (url) => actorUrl.toString() === url.toString(),
-      resolve: (url) => url,
-    },
-    // resolve /outbox/ to /
-    {
-      test: (url) => {
-        // createPathSegmentUrlSpace baseUrl must end with a slash, but the provided actorUrl may not
-        const { baseUrl, baseUrlPathMatchers } = actorUrl.pathname.endsWith('/')
-          ? { baseUrl: actorUrl,
-              baseUrlPathMatchers: [], }
-          : { baseUrl: new URL('/', actorUrl),
-              baseUrlPathMatchers: actorUrl.pathname.slice(1).split('/').map(pathSegment => matchers.exact(pathSegment)),}
-        const result = createPathSegmentUrlSpace(baseUrl, [...baseUrlPathMatchers, matchers.exact('outbox')], true).includes(url)
-        return result;
-      },
-      resolve: (outboxUrl) => {
-        // note: because there is a trailing slash on the outbox matcher, this will go from actor/outbox to actor
-        const actorUrl = new URL('..', outboxUrl)
-        return actorUrl
-      }
-    }
-  ])
-}
 
 test('createActorUrlResolver can resolve URLs', async (t) => {
   const cases = [
@@ -295,25 +148,6 @@ test('createActorUrlResolver can resolve URLs', async (t) => {
   }
 })
 
-function createMultiActorUrlResolver(actorsBaseUrl: URL): IUrlResolver {
-  const actorsBaseUrlString = actorsBaseUrl.toString()
-  if ( ! actorsBaseUrlString.endsWith('/')) {
-    throw new Error(`actorsBaseUrl must end with a slash, but it is '${actorsBaseUrlString}'`)
-  }
-  return (url) => {
-    const actorsBaseUrlString = actorsBaseUrl.toString()
-    if ( ! url.toString().startsWith(actorsBaseUrlString)) {
-      // url is not in the actorsBaseUrl space
-      return null;
-    }
-    const singleActorPath = url.toString().slice(actorsBaseUrlString.length)
-    const actorPathSegment = singleActorPath.split('/')[0]
-    const actorUrl = new URL(`${actorPathSegment}/`, actorsBaseUrl)
-    const actorResolution = createActorUrlResolver(actorUrl)(url)
-    return actorResolution;
-  }
-}
-
 test('createMultiActorUrlResolver can resolve URLs', async (t) => {
   const cases = [
     // actors at /
@@ -330,72 +164,6 @@ test('createMultiActorUrlResolver can resolve URLs', async (t) => {
     t.is(resolve(url)?.toString(), expectUnresolvable ? undefined : actor.toString(), `resolves '${url.toString()}' to actor url at '${actor.toString()}'`)
   }
 })
-
-/**
- * a space of URLs
- */
-interface UrlSpace {
-  /** whether the UrlSpace includes the URL */
-  includes(url: URL): boolean,
-  toString(): string,
-}
-
-interface PathSegmentTester {
-  test(segment: string): boolean,
-  toString(): string,
-}
-
-type PathSegmentMatcher =
-| undefined
-| PathSegmentTester
-
-const matchers = {
-  exact: (expectedValue: string) => ({
-    test: (value: string) => value === expectedValue,
-    toString() { return `exact(${expectedValue})` },
-  }),
-}
-
-/**
- * UrlSpace containing all the URLs that are a single path segment under a common baseUrl.
- * e.g. if baseUrl is 'http://localhost/foo', then 'http://localhost/foo/bar' is contained, but not 'http://localhost/foo/bar/baz'
- * @param baseUrl 
- */
-function createPathSegmentUrlSpace(baseUrl: URL, segmentExpectations: Array<PathSegmentMatcher>, trailingSlash=false): UrlSpace {
-  if ( ! baseUrl.pathname.endsWith('/')) {
-    throw new Error('baseUrl must end with a slash')
-  }
-  function includes(url: URL): boolean {
-    const urlString = url.toString();
-    const baseUrlString = baseUrl.toString();
-    if ((segmentExpectations.length === 0) && (urlString === baseUrlString)) {
-      // when there no segmentExpectations, the url must equal the baseUrl
-      return true;
-    }
-    if ( ! urlString.startsWith(baseUrlString)) {
-      // url is not under baseUrl
-      return false;
-    }
-    const urlSuffix = url.toString().slice(baseUrl.toString().length)
-    // if trailingSlash is expected, then splitting on '/' will have a final segment of ''
-    const slashSplitSegmentExpectations = trailingSlash ? [...segmentExpectations, matchers.exact('')] : segmentExpectations
-    const segments = urlSuffix.split('/')
-    if (segments.length !== slashSplitSegmentExpectations.length) {
-      return false;
-    }
-    for (const [i, expectation] of slashSplitSegmentExpectations.entries()) {
-      if (expectation && ! expectation.test(segments[i])) {
-        return false;
-      }
-    }
-    return true;
-  }
-  function toString() {
-    const segmentsString = `[${new Array(segmentExpectations.length + 1).fill('').join(',')}]`
-    return `PathSegmentUrlSpace(${baseUrl}${segmentsString}${trailingSlash ? '/' : ''})`
-  }
-  return { includes, toString }
-}
 
 test('PathSegmentUrlSpace cannot be created from baseUrl without trailing slash', async (t) => {
   t.throws(() => createPathSegmentUrlSpace(new URL('http://localhost/foo'), []))
