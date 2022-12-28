@@ -24,7 +24,7 @@ test('ActorServer serves ActivityPub actor', t => withHttpServer(ActorServer.cre
   assertValidActor(actor, assert);
 }));
 
-test('ActorServer serves actor outbox', t => withHttpServer(ActorServer.create(), async (baseUrl) => {
+test.skip('ActorServer serves actor outbox', t => withHttpServer(ActorServer.create(), async (baseUrl) => {
   const { outbox: outboxUrl } = await fetchActor(baseUrl);
   console.log('outboxUrl', outboxUrl.toString())
   assert(outboxUrl instanceof URL, 'outbox is a url');

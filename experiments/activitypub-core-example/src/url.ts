@@ -89,14 +89,14 @@ export function createPathSegmentUrlSpace(baseUrl: URL, segmentExpectations: Arr
   return { includes, toString }
 }
 
-export type IUrlResolver = (url: URL) => URL|null
+export type IUrlResolver<Resolution=URL> = (url: URL) => Resolution|null
 
-interface ITestedUrlResolverOptions {
+interface ITestedUrlResolverOptions<Resolution=URL> {
   test: (url: URL) => boolean,
-  resolve: IUrlResolver  
+  resolve: IUrlResolver<Resolution>  
 }
 
-export function createTestedUrlResolver(options: ITestedUrlResolverOptions): IUrlResolver {
+export function createTestedUrlResolver<Resolution=URL>(options: ITestedUrlResolverOptions<Resolution>): IUrlResolver<Resolution> {
   return (url: URL) => {
     if (options.test(url)) {
       return options.resolve(url);
