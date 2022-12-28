@@ -1,15 +1,15 @@
 import test from "ava";
-import { addressHttpURL } from "./index.js";
 import { ActivityPubActorFinder, createActorUrlResolver, createMultiActorUrlResolver } from "./actor-finder.js";
 import { IActorRepository, MultiActorRepository, SingleActorRepository } from "./actor-repository.js";
 import { Actor, createMockActor } from "./actor.js";
+import { addressUrl } from "./http.js";
 import { composeTestedUrlResolver, createPathSegmentUrlSpace, createTestedUrlResolver, IUrlResolver, matchers, UrlSpace, withoutTrailingSlash } from "./url.js";
 
-test('addressHttpURL', async (t) => {
-  t.is(addressHttpURL({
+test('addressUrl', async (t) => {
+  t.is(addressUrl({
     address: '::',
     port: 3000,
-  }).toString(), 'http://localhost:3000/')
+  }).toString(), 'http://127.0.0.1:3000/')
 })
 
 test('SingleActorRepository can get by id', async (t) => {
