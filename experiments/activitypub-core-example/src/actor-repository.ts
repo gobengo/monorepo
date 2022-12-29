@@ -1,12 +1,12 @@
 import { Actor } from "./actor.js";
 
 export interface IActorRepository {
-  getById(id: URL): Promise<null|Actor>
+  getById(id: URL): null|Actor
 }
 
 export class SingleActorRepository implements IActorRepository {
   constructor(public actorId: URL, private actor: Actor) {}
-  async getById(id: URL) {
+  getById(id: URL) {
     if (this.actorId.toString() !== id.toString()) {
       return null;
     }
@@ -19,9 +19,7 @@ export class MultiActorRepository implements IActorRepository {
   constructor(
     private options: {
       actorsUrl: URL,
-      byPathSegment:
-      | Pick<Map<string,Actor>, 'get'>
-      | { get(pathSegment: string): Promise<Actor|undefined> },
+      byPathSegment: Pick<Map<string,Actor>, 'get'>
     }
   ) {
     this.actorsUrl = options.actorsUrl
@@ -29,11 +27,11 @@ export class MultiActorRepository implements IActorRepository {
       throw new Error('actorsUrl must end with /')
     }
   }
-  async getByPathSegment(pathSegment: string): Promise<null|Actor> {
-    const actor = await this.options.byPathSegment.get(pathSegment)
+  getByPathSegment(pathSegment: string): null|Actor {
+    const actor = this.options.byPathSegment.get(pathSegment)
     return actor ?? null;
   }
-  async getById(url: URL) {
+  getById(url: URL) {
     const actorsUrlString = this.options.actorsUrl.toString();
     if ( ! url.toString().startsWith(actorsUrlString)) {
       return null;

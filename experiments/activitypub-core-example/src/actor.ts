@@ -1,8 +1,20 @@
-type UUID = string
-export type Actor = { uuid: UUID }
+import { createMockOutbox, Outbox } from "./outbox.js"
 
-export function createMockActor(): Actor {
+type UUID = string
+
+export type Actor = {
+  type: "Actor"
+  uuid: UUID
+  outbox: Outbox
+}
+
+export function createMockActor({
+  uuid = `uuid-${Math.random().toString().slice(2)}`,
+  outbox = createMockOutbox(),
+}={}): Actor {
   return {
-    uuid: `uuid-${Math.random().toString().slice(2)}`,
+    type: "Actor",
+    uuid,
+    outbox,
   }
 }
