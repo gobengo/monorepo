@@ -1,6 +1,6 @@
 import test from "ava";
 import { createMockActor } from "./actor.js";
-import { composeTestedUrlResolver, ensureTrailingSlash, IUrlResolver, matchers } from "./url.js";
+import { CannotTraverseError, composeTestedUrlResolver, EdgeTraverser, ensureTrailingSlash, IUrlResolver, matchers, UrlPathTraverser } from "./url.js";
 
 interface ActivityPubUrlParseResult {
   relation: 'self' | 'outbox'
@@ -16,57 +16,60 @@ interface PathSegmentUrlConfig {
   outbox: string
 }
 
+/**
+ * Parses URLs to determine the relation between the URL and the actor it belongs to (if any)
+ */
 class ActivityPubUrlParser {
-  static fromPathSegmentUrlConfig(urlConfig: PathSegmentUrlConfig): ActivityPubUrlParser {
+  static fromPathSegmentUrlConfig(
+    isActor: (url: URL) => boolean,
+    urlConfig: PathSegmentUrlConfig,
+  ): ActivityPubUrlParser {
     return new ActivityPubUrlParser(
-      composeTestedUrlResolver([
-        {
-          test: (url) => url.pathname === urlConfig.outbox,
-          resolve: (url) => ({
-            actor: url,
-            relation: 'outbox',
-          })
-        }
-      ])
+      isActor,
+      UrlPathTraverser.create(urlConfig.outbox)
     )
   }
   protected constructor(
-    private resolver: IUrlResolver<ActivityPubUrlParseResult>
+    private isActor: (url: URL) => boolean,
+    private outboxUrlTraverser: EdgeTraverser<URL>
   ) {}
-  parse(url: URL): ActivityPubUrlParseResult {
-    const resolution = this.resolver(url);
-    return resolution ?? {
-      actor: url,
-      relation: 'self',
+  parse(url: URL): ActivityPubUrlParseResult|null {
+    if (this.isActor(url)) {
+      return {
+        relation: 'self',
+        actor: url,
+      }
     }
+    try {
+      return {
+        relation: 'outbox',
+        actor: this.outboxUrlTraverser.invert(url)
+      }
+    } catch (error) {
+      if ( ! (error instanceof CannotTraverseError)) {
+        throw error;
+      }
+    }
+    return null;
   }
 }
 
-test.skip('ActivityPubUrlParser parses object URLs', async t => {
+test('ActivityPubUrlParser parses object URLs', async t => {
   const urlConfig = {
     outbox: 'fooOutbox',
   }
-  const baseUrl = new URL('http://localhost');
-  const actorUrl = new URL('http://localhost/actor')
-  const actor1 = createMockActor()
-  const urlParser = ActivityPubUrlParser.fromPathSegmentUrlConfig(urlConfig)
-  t.deepEqual(urlParser.parse(baseUrl), {
-    actor: baseUrl,
+  const actorUrl = new URL('http://localhost/actor/')
+  const urlParser = ActivityPubUrlParser.fromPathSegmentUrlConfig(
+    url => url.toString() === actorUrl.toString(),
+    urlConfig,
+  )
+  t.deepEqual(urlParser.parse(actorUrl), {
+    actor: actorUrl,
     relation: 'self',
   })
-  t.deepEqual(urlParser.parse(new URL(urlConfig.outbox, baseUrl)), {
-    actor: baseUrl,
+  t.deepEqual(urlParser.parse(new URL(actorUrl + urlConfig.outbox)), {
+    actor: actorUrl,
     relation: 'outbox',
   })
+  t.deepEqual(urlParser.parse(new URL(actorUrl + 'invalidsuffix')), null)
 })
-
-/**
- * Configuration for a function that will, given a node A, return another node that has the provided relation to A
- */
-interface EdgeInverterConfig<Target=URL,Source=URL> {
-  // what edge type will be inverted
-  edge: string
-  targetToSource(target: Target): Source
-}
-
-type EdgeInverter<Target=URL,Source=URL> = (target: Target) => Source

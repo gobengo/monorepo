@@ -131,10 +131,12 @@ export class UrlPathTraverser implements EdgeTraverser<URL> {
     if (targetString.endsWith(pathSourceToTarget)) {
       return new URL(targetString.slice(0, -1 * pathSourceToTarget.length))
     }
-    throw new Error(`target URL does not have path relation '${pathSourceToTarget}' to source`)
+    throw new CannotTraverseError(`target URL does not have path relation '${pathSourceToTarget}' to source`)
   }
   toString() {
     const { pathSourceToTarget } = this;
     return `UrlPathTraverser(${pathSourceToTarget})`
   }
 }
+
+export class CannotTraverseError extends Error {}
