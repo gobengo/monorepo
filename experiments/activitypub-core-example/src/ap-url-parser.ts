@@ -1,6 +1,4 @@
-import test from "ava";
-import { createMockActor } from "./actor.js";
-import { CannotTraverseError, composeTestedUrlResolver, EdgeTraverser, ensureTrailingSlash, IUrlResolver, matchers, UrlPathTraverser } from "./url.js";
+import { CannotTraverseError, EdgeTraverser, UrlPathTraverser } from "./url.js";
 
 interface ActivityPubUrlParseResult {
   relation: 'self' | 'outbox'
@@ -19,7 +17,7 @@ interface PathSegmentUrlConfig {
 /**
  * Parses URLs to determine the relation between the URL and the actor it belongs to (if any)
  */
-class ActivityPubUrlParser {
+export class ActivityPubUrlParser {
   static fromPathSegmentUrlConfig(
     isActor: (url: URL) => boolean,
     urlConfig: PathSegmentUrlConfig,
@@ -53,23 +51,3 @@ class ActivityPubUrlParser {
     return null;
   }
 }
-
-test('ActivityPubUrlParser parses object URLs', async t => {
-  const urlConfig = {
-    outbox: 'fooOutbox',
-  }
-  const actorUrl = new URL('http://localhost/actor/')
-  const urlParser = ActivityPubUrlParser.fromPathSegmentUrlConfig(
-    url => url.toString() === actorUrl.toString(),
-    urlConfig,
-  )
-  t.deepEqual(urlParser.parse(actorUrl), {
-    actor: actorUrl,
-    relation: 'self',
-  })
-  t.deepEqual(urlParser.parse(new URL(actorUrl + urlConfig.outbox)), {
-    actor: actorUrl,
-    relation: 'outbox',
-  })
-  t.deepEqual(urlParser.parse(new URL(actorUrl + 'invalidsuffix')), null)
-})

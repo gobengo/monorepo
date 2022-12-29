@@ -213,7 +213,6 @@ interface DatabaseAdapterCreationOptions {
 
 
 async function renderActivityPubExpressPage() {
-  console.log('renderActivityPubExpressPage', arguments)
   return `
     <!doctype html>
     renderActivityPubExpressPage
@@ -224,7 +223,6 @@ async function renderActivityPubExpressEntity(options: {
   entity: AP.Entity,
   actor?: AP.Actor,
 }) {
-  console.log('renderActivityPubExpressPage', arguments)
   return `
     <!doctype html>
     <pre>${JSON.stringify(options.entity, null, 2)}</pre>

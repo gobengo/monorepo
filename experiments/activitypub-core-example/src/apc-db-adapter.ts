@@ -19,6 +19,10 @@ export class DatabaseAdapter implements IDatabaseAdapater {
 
   async findEntityById(id: URL) {
     const actor = await this.actorFinder.getByUrl(id);
+    console.log('DatabaseAdapter findEntityById', {
+      id: id.toString(),
+      actor: actor,
+    })
     return actor;
   }
 }

@@ -84,8 +84,9 @@ function asActorType(type: unknown): ActorType {
 }
 
 export function asOrderedCollection(object: unknown): OrderedCollection {
-  assert(typeof object === 'object' && object !== null)
-  assert(hasOwnProperty(object, 'type'))
+  console.log('asOrderedCollection', object)
+  assert(typeof object === 'object' && object !== null, 'orderedCollection is an object')
+  assert(hasOwnProperty(object, 'type'), 'orderedCollection has a type')
   const typeArray = Array.isArray(object.type) ? object.type : [object.type];
   if ( ! typeArray.includes('OrderedCollection')) {
     throw new Error('not an ordered collection')
