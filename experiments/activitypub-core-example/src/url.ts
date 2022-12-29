@@ -9,7 +9,7 @@ export function withoutTrailingSlash(url: URL): URL {
   return urlOut
 }
 
-export function composeTestedUrlResolver(testResolveConfigs: Array<ITestedUrlResolverOptions>): IUrlResolver {
+export function composeTestedUrlResolver<Resolution>(testResolveConfigs: Array<ITestedUrlResolverOptions<Resolution>>): IUrlResolver<Resolution> {
   return (url) => {
     for (const config of testResolveConfigs) {
       const singleResolve = createTestedUrlResolver(config)
@@ -21,7 +21,6 @@ export function composeTestedUrlResolver(testResolveConfigs: Array<ITestedUrlRes
     return null;
   }
 }
-
 
 /**
  * a space of URLs
@@ -103,4 +102,36 @@ export function createTestedUrlResolver<Resolution=URL>(options: ITestedUrlResol
     }
     return null;
   };
+}
+
+export interface RelationWalker<Node=URL> {
+  follow(source: Node): Node
+  invert(target: Node): Node
+}
+
+/**
+ * can bidirectionally apply a transformation from one URL to another along a URL path difference
+ */
+export class PathWalker implements RelationWalker<URL> {
+  static create(pathSourceToTarget: string): PathWalker {
+    return new PathWalker(pathSourceToTarget)
+  }
+  protected constructor(protected pathSourceToTarget: string) {}
+  follow(source: URL) {
+    const { pathSourceToTarget } = this;
+    const target = new URL(source + pathSourceToTarget)
+    return target;
+  }
+  invert(target: URL) {
+    const { pathSourceToTarget } = this;
+    const targetString = target.toString();
+    if (targetString.endsWith(pathSourceToTarget)) {
+      return new URL(targetString.slice(0, -1 * pathSourceToTarget.length))
+    }
+    throw new Error(`target URL does not have path relation '${pathSourceToTarget}' to source`)
+  }
+  toString() {
+    const { pathSourceToTarget } = this;
+    return `PathWalker(${pathSourceToTarget})`
+  }
 }
