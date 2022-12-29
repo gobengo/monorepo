@@ -1,5 +1,7 @@
 import { ActivityPubActorFinder } from "./actor-finder";
 import type * as apc from 'activitypub-core-types';
+import { ActivityPubUrlParser } from "./ap-url-parser";
+import { ActivityPubUrlResolver, IActivityPubUrlResolver } from "./ap-url-resolver";
 
 type IDatabaseAdapater = Pick<apc.DbAdapter, 'findEntityById'/*|'findOne'|'getActorByUserId'*/>
 
@@ -9,20 +11,25 @@ type IDatabaseAdapater = Pick<apc.DbAdapter, 'findEntityById'/*|'findOne'|'getAc
  */
 export class DatabaseAdapter implements IDatabaseAdapater {
   static create(options: {
-    actorFinder: ActivityPubActorFinder,
+    resolver: IActivityPubUrlResolver,
   }) {
-    return new DatabaseAdapter(options.actorFinder)
+    return new DatabaseAdapter(options.resolver)
   }
   constructor(
-    private readonly actorFinder: ActivityPubActorFinder,
+    private readonly resolver: IActivityPubUrlResolver,
   ) {}
 
   async findEntityById(id: URL) {
-    const actor = await this.actorFinder.getByUrl(id);
+    const resolution = await this.resolver.resolve(id)
+    if ( ! resolution) return resolution
     console.log('DatabaseAdapter findEntityById', {
       id: id.toString(),
-      actor: actor,
+      resolution,
     })
-    return actor;
+    switch (resolution.type) {
+      case 'Outbox':
+        return resolution.toOrderedCollection()
+    }
+    return resolution;
   }
 }

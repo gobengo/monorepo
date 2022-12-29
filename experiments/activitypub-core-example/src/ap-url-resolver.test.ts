@@ -12,23 +12,23 @@ test('ActivityPubUrlResolver resolves object URLs from repo', async t => {
   const actorUrl = new URL('http://localhost/actor/')
   const actor1 = createMockActor()
   const actors = new SingleActorRepository(actorUrl, actor1)
-  const parse = (url: URL) => ActivityPubUrlParser.fromPathSegmentUrlConfig(
+  const parser = ActivityPubUrlParser.fromPathSegmentUrlConfig(
     url => url.toString() === actorUrl.toString(),
     urlConfig,
-  ).parse(url)
+  )
   const resolver = ActivityPubUrlResolver.create({
-    parse,
+    parser,
     actors,
   })
-  t.deepEqual(await resolver(actorUrl), actor1, 'resolves actor uri to actor')
+  t.deepEqual(await resolver.resolve(actorUrl), actor1, 'resolves actor uri to actor')
 
   // resolve actor
-  const resolvedActor = await resolver(actorUrl)
+  const resolvedActor = await resolver.resolve(actorUrl)
   assert(t, resolvedActor, 'resolved something from actor uri')
   assert(t, resolvedActor.type === 'Actor', 'resolved Actor from actor uri')
 
   // resolve outbox uri
-  const resolvedOutbox = await resolver(new URL(actorUrl + urlConfig.outbox))
+  const resolvedOutbox = await resolver.resolve(new URL(actorUrl + urlConfig.outbox))
   assert(t, resolvedOutbox, 'resolved something from outbox uri')
   assert(t, resolvedOutbox.type === 'Outbox', 'resolved something from outbox uri')
   const outboxCollection = await resolvedOutbox.toOrderedCollection()
