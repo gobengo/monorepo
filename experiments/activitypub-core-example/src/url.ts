@@ -104,7 +104,10 @@ export function createTestedUrlResolver<Resolution=URL>(options: ITestedUrlResol
   };
 }
 
-export interface RelationWalker<Node=URL> {
+/**
+ * traverses an edge back and forth
+ */
+export interface EdgeTraverser<Node=URL> {
   follow(source: Node): Node
   invert(target: Node): Node
 }
@@ -112,9 +115,9 @@ export interface RelationWalker<Node=URL> {
 /**
  * can bidirectionally apply a transformation from one URL to another along a URL path difference
  */
-export class PathWalker implements RelationWalker<URL> {
-  static create(pathSourceToTarget: string): PathWalker {
-    return new PathWalker(pathSourceToTarget)
+export class UrlPathTraverser implements EdgeTraverser<URL> {
+  static create(pathSourceToTarget: string): UrlPathTraverser {
+    return new UrlPathTraverser(pathSourceToTarget)
   }
   protected constructor(protected pathSourceToTarget: string) {}
   follow(source: URL) {
@@ -132,6 +135,6 @@ export class PathWalker implements RelationWalker<URL> {
   }
   toString() {
     const { pathSourceToTarget } = this;
-    return `PathWalker(${pathSourceToTarget})`
+    return `UrlPathTraverser(${pathSourceToTarget})`
   }
 }

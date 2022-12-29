@@ -1,15 +1,15 @@
 import test from "ava";
-import { PathWalker } from "./url.js";
+import { UrlPathTraverser } from "./url.js";
 
 test('PathWalker can go back and forth actor to outbox', async t => {
   const cases = [
     {
-      walker: PathWalker.create('.activitypub/outbox/'),
+      walker: UrlPathTraverser.create('.activitypub/outbox/'),
       source: new URL('http://localhost/actor/'),
       target: new URL('http://localhost/actor/.activitypub/outbox/')
     },
     {
-      walker: PathWalker.create('/outbox/'),
+      walker: UrlPathTraverser.create('/outbox/'),
       source: new URL('http://localhost/actor'),
       target: new URL('http://localhost/actor/outbox/')
     }
