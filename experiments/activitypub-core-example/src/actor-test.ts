@@ -5,17 +5,18 @@ import * as as2 from "./activitystreams2.js";
 export function assertValidActor(actor: unknown, assert: Assert) {
   assert(typeof actor === 'object', 'actor is an object');
   assert(actor !== null, 'actor is not null');
-  assertHasValidLdContext(actor, assert);
+  // @context is not actuall required in as2
+  if (hasOwnProperty(actor, '@context')) {
+    assertValidAs2LdContext(actor['@context'], assert);
+  }
 }
 
 /**
- * assert valid actor @context value
+ * assert valid as2 @context value
  * It must either be the right string value,
  * or an array containing that string value
  */
-function assertHasValidLdContext(actor: object, assert: Assert) {
-  assert.ok(hasOwnProperty(actor, '@context'), 'actor has @context');
-  const context = actor['@context'];
+function assertValidAs2LdContext(context: unknown, assert: Assert) {
   if (typeof context === 'string') {
     assert.equal(context, as2.contextUrl.toString(), 'actor @context is correct string');
   } else if (Array.isArray(context)) {

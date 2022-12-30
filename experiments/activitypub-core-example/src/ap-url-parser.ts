@@ -1,6 +1,6 @@
 import { CannotTraverseError, EdgeTraverser, UrlPathTraverser } from "./url.js";
 
-interface ActivityPubUrlParseResult {
+export interface ActivityPubUrlParseResult {
   relation: 'self' | 'outbox'
   actor: URL
 }

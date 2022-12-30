@@ -7,7 +7,7 @@ test('addressUrl', async (t) => {
   t.is(addressUrl({
     address: '::',
     port: 3000,
-  }).toString(), 'http://127.0.0.1:3000/')
+  }).toString(), 'http://localhost:3000/')
 })
 
 test('createTestedUrlResolver can resolve URLs', async (t) => {

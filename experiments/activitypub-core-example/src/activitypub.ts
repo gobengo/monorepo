@@ -1,8 +1,9 @@
 import { AP as APCore } from "activitypub-core-types"
-import * as as2 from "./activitystreams2"
+import * as as2 from "./activitystreams2.js"
 import { assertValidActor } from "./actor-test"
 import assert from "node:assert";
 import { hasOwnProperty } from "./object.js";
+import { ActorType } from "./activitystreams2"
 
 /**
  * canonical rfc6838 media type for fetching activitypub objects
@@ -17,8 +18,6 @@ export type OrderedCollection = Omit<APCore.OrderedCollection, 'type'> & {
   // this type is a bit more accurate than the activitypub-core-types type
   type: 'OrderedCollection'
 }
-export type ActorTypeString = typeof APCore.ActorTypes[keyof typeof APCore.ActorTypes]
-export type ActorType = ActorTypeString | ActorTypeString[]
 
 export function actorFetcher(fetch: typeof globalThis.fetch) {
   return async function fetchActor(url: URL): Promise<Actor> {
@@ -67,20 +66,29 @@ function asActor(object: unknown): Actor {
  * parse a value as an activitypub actor 'type' property value
  */
 function asActorType(type: unknown): ActorType {
-  const validTypes: ActorTypeString[] = []
+  const foundActorTypes: as2.ActorTypeString[] = []
+  const foundNonActorTypes: string[] = [];
+  const allActorTypes = new Set(as2.ActorTypeStrings)
   const typeArray = Array.isArray(type) ? type : [type];
-  for (const definedActorType of Object.values(APCore.ActorTypes)) {
-    if (typeArray.includes(definedActorType)) {
-      validTypes.push(definedActorType)
+  for (const t of typeArray) {
+    if (allActorTypes.has(t)) {
+      foundActorTypes.push(t)
+    } else {
+      foundNonActorTypes.push(t)
     }
   }
-  switch (validTypes.length) {
+  if ( ! foundActorTypes.length) {
+    throw new Error(`invalid actor type: ${type}`)
+  }
+  const [firstFoundActorType, ...restFoundActorTypes] = foundActorTypes
+  const typesWithActorTypesFirst: ActorType = [firstFoundActorType, ...restFoundActorTypes, ...foundNonActorTypes]
+  switch (typesWithActorTypesFirst.length) {
     case 0:
       throw new Error(`invalid actor type: ${type}`)
     case 1:
-      return validTypes[0]
+      return typesWithActorTypesFirst[0]
   }
-  return validTypes
+  return typesWithActorTypesFirst
 }
 
 export function asOrderedCollection(object: unknown): OrderedCollection {

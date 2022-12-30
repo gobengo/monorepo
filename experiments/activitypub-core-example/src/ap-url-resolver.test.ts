@@ -3,7 +3,8 @@ import { createMockActor } from "./actor.js";
 import { ActivityPubUrlParser } from "./ap-url-parser.js";
 import { SingleActorRepository } from './actor-repository.js'
 import { assert } from "./ava.js";
-import { ActivityPubUrlResolver } from "./ap-url-resolver.js";
+import { createActivityPubUrlResolver } from "./ap-url-resolver.js";
+import { ActorTypeStrings, hasActivityStreams2Type } from "./activitystreams2.js";
 
 test('ActivityPubUrlResolver resolves object URLs from repo', async t => {
   const urlConfig = {
@@ -16,19 +17,19 @@ test('ActivityPubUrlResolver resolves object URLs from repo', async t => {
     url => url.toString() === actorUrl.toString(),
     urlConfig,
   )
-  const resolver = ActivityPubUrlResolver.create({
+  const resolve = createActivityPubUrlResolver({
     parser,
     actors,
   })
-  t.deepEqual(await resolver.resolve(actorUrl), actor1, 'resolves actor uri to actor')
+  t.deepEqual(await resolve(actorUrl), actor1, 'resolves actor uri to actor')
 
   // resolve actor
-  const resolvedActor = await resolver.resolve(actorUrl)
+  const resolvedActor = await resolve(actorUrl)
   assert(t, resolvedActor, 'resolved something from actor uri')
-  assert(t, resolvedActor.type === 'Actor', 'resolved Actor from actor uri')
+  assert(t, hasActivityStreams2Type(resolvedActor, new Set(ActorTypeStrings)), 'resolved Actor from actor uri')
 
   // resolve outbox uri
-  const resolvedOutbox = await resolver.resolve(new URL(actorUrl + urlConfig.outbox))
+  const resolvedOutbox = await resolve(new URL(actorUrl + urlConfig.outbox))
   assert(t, resolvedOutbox, 'resolved something from outbox uri')
   assert(t, resolvedOutbox.type === 'Outbox', 'resolved something from outbox uri')
   const outboxCollection = await resolvedOutbox.toOrderedCollection()

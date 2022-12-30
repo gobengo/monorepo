@@ -3,23 +3,23 @@
  */
 
 import test from 'ava';
-import { createMockActor } from './actor.js';
+import { createMockActor, toActivityPubCoreActor } from './actor.js';
 import {ActivityPubActorFinder} from "./actor-finder.js";
 import { SingleActorRepository } from './actor-repository.js';
 import { DatabaseAdapter } from './apc-db-adapter.js';
 import { asOrderedCollection } from './activitypub.js';
 import { ActivityPubUrlParser } from './ap-url-parser.js';
-import { ActivityPubUrlResolver } from './ap-url-resolver.js';
+import { createActivityPubUrlResolver } from './ap-url-resolver.js';
 import { assert } from './ava.js';
 
-test.only('create db adapter using actor-finder', async t => {
+test('can create activitypub-core db adapter that finds entities', async t => {
   const urlConfig = {
     outbox: 'fooOutbox',
   }
   const actorUrl = new URL('http://localhost/actor/')
   const actor1 = createMockActor()
   const actors = new SingleActorRepository(actorUrl, actor1)
-  const resolver = ActivityPubUrlResolver.create({
+  const resolve = createActivityPubUrlResolver({
     parser: ActivityPubUrlParser.fromPathSegmentUrlConfig(
       url => url.toString() === actorUrl.toString(),
       urlConfig,
@@ -27,10 +27,11 @@ test.only('create db adapter using actor-finder', async t => {
     actors,
   })
   const dbAdapter = DatabaseAdapter.create({
-    resolver,
+    resolve,
   });
   // actor
-  t.deepEqual(await dbAdapter.findEntityById(actorUrl), actor1, 'can resolve actor by id')
+  const actorFind = await dbAdapter.findEntityById(actorUrl);
+  t.deepEqual(actorFind?.type, actor1.type, 'found actor of type')
   // outbox
   const outbox = await dbAdapter.findEntityById(new URL(actorUrl + urlConfig.outbox))
   t.notThrows(() => asOrderedCollection(outbox));

@@ -30,7 +30,7 @@ export function addressUrl(addressInfo: string | Pick<AddressInfo,'address'|'por
     throw new TypeError("addressInfo is unexpectedly null");
   if (typeof addressInfo === "string") return new URL(addressInfo);
   const { address, port } = addressInfo;
-  const host = address === "::" ? "127.0.0.1" : address;
+  const host = address === "::" ? "localhost" : address;
   const urlString = `http://${host}:${port}`;
   return new URL(urlString);
 }

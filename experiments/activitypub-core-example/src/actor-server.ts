@@ -6,24 +6,44 @@ import { DeliveryAdapter } from 'activitypub-core-delivery';
 import { FtpStorageAdapter } from 'activitypub-core-storage-ftp';
 import { AP, Plugin } from 'activitypub-core-types';
 import { ensureTrailingSlash } from "./url.js";
+import { IActivityPubUrlResolver } from "./ap-url-resolver.js";
+import { DatabaseAdapter } from "./apc-db-adapter.js";
+import { debuglog } from 'node:util';
+import type { IMinimalApcDatabaseAdapter } from "./apc-db-adapter"
+
+const debug = debuglog('actor-server');
 
 export class ActorServer {
   static create(options: {
     app?: express.Express,
     publicBaseUrl?: URL,
-  }={}) {
-    const { app = express() } = options;
-    const activityPubMountPath = '/.activitypub/'
+    resolve: IActivityPubUrlResolver,
+  }) {
+    const {
+      app = express(),
+      resolve,
+    } = options;
+    const dbAdapter = DatabaseAdapter.create({
+      resolve,
+    });
     app
-    .use(/^\/$/, redirectActivityPubGet(activityPubMountPath))
+    // .use(function (req, res, next) {
+    //   (async () => {
+    //     const fullUrl = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`)
+    //     debug('ben testing resolver', fullUrl.toString());
+    //     const resolution = await resolve(fullUrl)
+    //     debug('resolution', resolution)
+    //   })().then(next).catch(next);
+    // })
     .use(function (req, res, next) {
       const serverBaseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}`)
-      const activityPubBaseUrl = new URL(activityPubMountPath, serverBaseUrl)
+      const activityPubBaseUrl = serverBaseUrl
       const handleWithActivityPubCore = createActivityPubCoreHandler({
         publicBaseUrl: activityPubBaseUrl,
+        dbAdapter,
       })
       const handleWithExpress = express()
-        .use(activityPubMountPath, handleWithActivityPubCore)
+        .use(handleWithActivityPubCore)
         .use(function (req, res, next) {
           const prefixes = ['/.well-known/webfinger'];
           for (const _ of prefixes) {
@@ -48,10 +68,12 @@ export class ActorServer {
 
 export function createActivityPubCoreHandler(options: {
   publicBaseUrl: URL,
+  dbAdapter: IMinimalApcDatabaseAdapter,
 }): express.Handler {
   const {
     publicBaseUrl,
   } = options;
+  const db = options.dbAdapter as unknown as DbAdapter;
   return function handleWithActivityPubCore(req, res, next) {
     console.log('in handleWithActivityPubCore', {
       originalUrl: req.originalUrl
@@ -59,19 +81,14 @@ export function createActivityPubCoreHandler(options: {
     (async () => {
       const requestHost = req.get('host')
       assert.ok(requestHost, 'req.headers.host must be truthy')
-      const dbAdapter = await createDbAdapter({
-        baseUrl: new URL(`${req.protocol}://${requestHost}${req.originalUrl}`),
-        host: requestHost,
-        publicBaseUrl,
-      })
       const handleActivityPub = createActivityPubExpress({
         plugins: [],
         adapters: {
           auth: createAuthAdapter(),
-          db: dbAdapter,
+          db,
           delivery: new DeliveryAdapter({
             adapters: {
-              db: dbAdapter,
+              db,
             },
           }),
           storage: new FtpStorageAdapter(
@@ -86,6 +103,7 @@ export function createActivityPubCoreHandler(options: {
           login: renderActivityPubExpressPage,
         },
       });
+      console.log('about to handleActivityPub', `${req.originalUrl}${req.url}`)
       handleActivityPub(req, res, next);
     })().catch(next)
   }
@@ -191,14 +209,14 @@ export function redirectActivityPubGet(redirectTo: string): express.Handler {
 function createAuthAdapter(_console=console): AuthAdapter {
   return {
     createUser() {
-      _console.debug('createUser', arguments)
+      debug('createUser', arguments)
     },
     getUserIdByToken() {
-      _console.debug('getUserIdByToken', arguments)
+      debug('getUserIdByToken', arguments)
       return 'mock-userId'
     },
     authenticatePassword() {
-      _console.debug('authenticatePassword', arguments)
+      debug('authenticatePassword', arguments)
     }
   }
 }

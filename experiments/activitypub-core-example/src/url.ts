@@ -9,6 +9,11 @@ export function withoutTrailingSlash(url: URL): URL {
   return urlOut
 }
 
+export function withHostname(url: URL, hostname: string): URL {
+  const urlOut = new URL(`${url.protocol}//${hostname}${url.pathname}${url.search}`)
+  return urlOut
+}
+
 export function composeTestedUrlResolver<Resolution>(testResolveConfigs: Array<ITestedUrlResolverOptions<Resolution>>): IUrlResolver<Resolution> {
   return (url) => {
     for (const config of testResolveConfigs) {
