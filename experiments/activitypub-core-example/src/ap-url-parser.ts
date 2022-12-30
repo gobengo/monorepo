@@ -1,5 +1,9 @@
 import { CannotTraverseError, EdgeTraverser, UrlPathTraverser } from "./url.js";
 
+export interface IActivityPubTraversers<Node=URL> {
+  outbox: EdgeTraverser<Node>
+}
+
 export interface ActivityPubUrlParseResult {
   relation: 'self' | 'outbox'
   actor: URL

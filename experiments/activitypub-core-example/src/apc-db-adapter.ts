@@ -1,11 +1,12 @@
 import { ActivityPubActorFinder } from "./actor-finder";
 import type * as apc from 'activitypub-core-types';
 import type { AP } from "activitypub-core-types"
-import { ActivityPubUrlParser } from "./ap-url-parser";
+import { ActivityPubUrlParser, IActivityPubTraversers } from "./ap-url-parser";
 import { IActivityPubUrlResolver } from "./ap-url-resolver";
 import { debuglog } from 'util';
 import { toActivityPubCoreActor } from "./actor.js";
 import { APCoreActor } from "./activitypub-core.js";
+import { EdgeTraverser } from "./url";
 
 type IDatabaseAdapater = apc.DbAdapter
 
@@ -25,15 +26,29 @@ const debug = debuglog('apc-db-adapter')
 export class DatabaseAdapter implements IMinimalApcDatabaseAdapter {
   static create(options: {
     resolve: IActivityPubUrlResolver,
+    urls: IActivityPubTraversers,
+    getExternalUrl?: (url: URL) => URL,
   }) {
-    return new DatabaseAdapter(options.resolve)
+    return new DatabaseAdapter(
+      options.resolve,
+      options.urls,
+      options.getExternalUrl,
+    )
   }
-  constructor(
+  protected constructor(
     private readonly resolve: IActivityPubUrlResolver,
+    private readonly urls: IActivityPubTraversers,
+    /**
+     * activitypub-core builds its own URL like 'http://localhost:3000/' for the id
+     * This funtion should return the 'real' id fit for external presentation
+     */
+    private readonly getExternalUrl: (url: URL) => URL = (url)=>url,
   ) {}
 
-  async findEntityById(id: URL) {
-    debug('findEntityById', id.toString())
+  async findEntityById(wrongId: URL) {
+    debug('findEntityById', wrongId.toString())
+    const id = this.getExternalUrl(wrongId)
+    debug('corrected apc id to external url id', id.toString())
     const resolution = await this.resolve(id)
     if ( ! resolution) return resolution
     console.log('DatabaseAdapter findEntityById', {
@@ -46,6 +61,7 @@ export class DatabaseAdapter implements IMinimalApcDatabaseAdapter {
     }
     return toActivityPubCoreActor(resolution, {
       id,
+      outbox: this.urls.outbox.follow(id),
     });
   }
 

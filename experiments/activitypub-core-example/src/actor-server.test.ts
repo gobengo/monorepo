@@ -5,14 +5,14 @@ import { mediaType as apMediaType, asOrderedCollection } from "./activitypub.js"
 import { assertValidActor } from "./actor-test.js";
 import assert from 'node:assert';
 import { actorFetcher } from "./activitypub.js";
-import { createMockActor } from "./actor.js";
+import { Actor, createMockActor } from "./actor.js";
 import { SingleActorRepository } from "./actor-repository.js";
 import { createActivityPubUrlResolver, createResolverForActor, IActivityPubUrlResolver, localhostResolver } from "./ap-url-resolver.js";
-import { ActivityPubUrlParser } from "./ap-url-parser.js";
+import { ActivityPubUrlParser, IActivityPubTraversers } from "./ap-url-parser.js";
 import pinoHttp from 'pino-http';
 import pinoHttpPrint from 'pino-http-print';
 import express from "express";
-import { withHostname } from "./url.js";
+import { UrlPathTraverser, withHostname } from "./url.js";
 import { hasActivityStreams2Type, mediaType as as2MediaType } from "./activitystreams2.js";
 import { debuglog } from "util";
 import { hasOwnProperty } from "./object.js";
@@ -21,16 +21,13 @@ const debug = debuglog('actor-server.test')
 
 const fetchActor = actorFetcher(fetch);
 
-function simpleMockResolver(): IActivityPubUrlResolver {
-  const resolve: IActivityPubUrlResolver = async (url) => {
-    debug('simpleMockResolver resolving', url.toString())
-    switch (url.pathname) {
-      case '/':
-        return createMockActor()
-    }
-    return null;
+function simpleServerConfig(): {
+  getActorById: (id: URL) => Promise<Actor|null>
+} {
+  async function getActorById() {
+    return createMockActor()
   }
-  return resolve;
+  return { getActorById };
 }
 
 test('testing works', t => {
@@ -38,14 +35,14 @@ test('testing works', t => {
 })
 
 test('ActorServer responds to GET / with 200', async t => withHttpServer(ActorServer.create({
-  resolve: simpleMockResolver(),
+  ...simpleServerConfig(),
 }), async (baseUrl) => {
   const response = await fetch(baseUrl.toString());
   t.is(response.status, 200);
 }));
 
 test('ActorServer serves ActivityPub actor', async t =>{
-  const actorServer = ActorServer.create({ resolve: simpleMockResolver() })
+  const actorServer = ActorServer.create(simpleServerConfig())
   await withHttpServer(actorServer, async (baseUrl) => {
     const response = await fetch(baseUrl.toString(), {
       headers: {
@@ -59,32 +56,24 @@ test('ActorServer serves ActivityPub actor', async t =>{
   })
 })
 
-test.only('ActorServer serves actor outbox', async t => {
+test('ActorServer serves actor outbox', async t => {
   const server = ActorServer.create({
     app: express().use(pinoHttp(
       pinoHttpPrint.httpPrintFactory()()
     )),
-    resolve: simpleMockResolver(),
+    ...simpleServerConfig(),
   });
   await withHttpServer(server, async (baseUrl) => {
     const actorUrl = baseUrl;
     const actor = await fetchActor(actorUrl);
-    const { outbox } = actor;
-    if (hasOwnProperty(outbox, 'type')) {
-      t.deepEqual(outbox.type, 'OrderedCollection');
-    } else {
-      t.assert(outbox instanceof URL)
-    }
-    // assert(outboxUrl instanceof URL, 'outbox is a url');
-    // const response = await fetch(new Request(outboxUrl.toString(), {
-    //   headers: {
-    //     accept: apMediaType
-    //   }
-    // }))
-    // t.is(response.status, 200);
-    // const outboxObject = await response.json() as unknown;
-    // console.log({ outboxObject })
-    // const outbox = asOrderedCollection(outboxObject);
-    // console.log({ outbox })
+    t.assert(actor.outbox instanceof URL, 'outbox is a url reference')
+    const response = await fetch(new Request(actor.outbox.toString(), {
+      headers: {
+        accept: apMediaType
+      }
+    }))
+    t.is(response.status, 200);
+    const outboxObject = await response.json() as unknown;
+    const outbox = asOrderedCollection(outboxObject);
   })
 });

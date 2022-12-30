@@ -11,6 +11,7 @@ import { asOrderedCollection } from './activitypub.js';
 import { ActivityPubUrlParser } from './ap-url-parser.js';
 import { createActivityPubUrlResolver } from './ap-url-resolver.js';
 import { assert } from './ava.js';
+import { UrlPathTraverser } from './url.js';
 
 test('can create activitypub-core db adapter that finds entities', async t => {
   const urlConfig = {
@@ -28,6 +29,9 @@ test('can create activitypub-core db adapter that finds entities', async t => {
   })
   const dbAdapter = DatabaseAdapter.create({
     resolve,
+    urls: {
+      outbox: UrlPathTraverser.create('outbox')
+    }
   });
   // actor
   const actorFind = await dbAdapter.findEntityById(actorUrl);

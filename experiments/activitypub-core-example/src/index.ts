@@ -4,6 +4,7 @@ import pinoHttpPrint from 'pino-http-print';
 import { fileURLToPath } from "node:url";
 import { ActorServer } from "./actor-server.js";
 import { addressUrl } from "./http.js";
+import { createMockActor } from "./actor.js";
 
 if (import.meta.url.startsWith('file:')) {
   const modulePath = fileURLToPath(import.meta.url);
@@ -11,6 +12,8 @@ if (import.meta.url.startsWith('file:')) {
     await main()
   }
 }
+
+
 
 async function main() {
   console.log('starting...')
@@ -20,6 +23,9 @@ async function main() {
         pinoHttpPrint.httpPrintFactory()()
       )),
     publicBaseUrl: new URL(readEnv('PUBLIC_BASE_URL')),
+    getActorById: async (id) => {
+      return createMockActor();
+    },
   });
   const listener = app.listen(process.env.PORT ?? 0, () => {
     console.log('listening...', addressUrl(listener?.address()).toString())

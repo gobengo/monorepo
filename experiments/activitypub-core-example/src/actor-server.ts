@@ -10,6 +10,9 @@ import { IActivityPubUrlResolver } from "./ap-url-resolver.js";
 import { DatabaseAdapter } from "./apc-db-adapter.js";
 import { debuglog } from 'node:util';
 import type { IMinimalApcDatabaseAdapter } from "./apc-db-adapter"
+import { UrlPathTraverser } from "./url.js"
+import { IActivityPubTraversers } from "./ap-url-parser.js";
+import { Actor } from "./actor.js";
 
 const debug = debuglog('actor-server');
 
@@ -17,15 +20,33 @@ export class ActorServer {
   static create(options: {
     app?: express.Express,
     publicBaseUrl?: URL,
-    resolve: IActivityPubUrlResolver,
+    getActorById: (id: URL) => Promise<Actor|null>
   }) {
     const {
       app = express(),
-      resolve,
     } = options;
-    const dbAdapter = DatabaseAdapter.create({
-      resolve,
-    });
+    const urls: IActivityPubTraversers = {
+      outbox: UrlPathTraverser.create('outbox')
+    }
+    const resolve: IActivityPubUrlResolver = async (url) => {
+      debug('resolving', url.toString())
+      if (url.pathname === '/') {
+        // it's an actor
+        const actor = await options.getActorById(url)
+        return actor;
+      }
+      const actorUriForOutbox = urls.outbox.invert(url);
+      if (actorUriForOutbox) {
+        const actor = await options.getActorById(url)
+        debug('got actor for outbox', {
+          actor,
+          outboxUri: url.toString(),
+        })
+        return actor ? actor.outbox : null;
+      }
+      debug('could not resolve anything for uri', url.toString())
+      return null;
+    }
     app
     // .use(function (req, res, next) {
     //   (async () => {
@@ -36,6 +57,20 @@ export class ActorServer {
     //   })().then(next).catch(next);
     // })
     .use(function (req, res, next) {
+      const dbAdapter = DatabaseAdapter.create({
+        resolve,
+        urls,
+        getExternalUrl: (url) => {
+          debug('getExternalUrl', url.toString())
+          const baseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}${req.baseUrl}`)
+          const externalUrl = new URL(baseUrl + withoutLeadingSlash(req.url))
+          debug('built externalUrl', {
+            baseUrl: baseUrl.toString(),
+            externalUrl: externalUrl.toString(),
+          })
+          return externalUrl
+        }
+      });
       const serverBaseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}`)
       const activityPubBaseUrl = serverBaseUrl
       const handleWithActivityPubCore = createActivityPubCoreHandler({
@@ -103,19 +138,10 @@ export function createActivityPubCoreHandler(options: {
           login: renderActivityPubExpressPage,
         },
       });
-      console.log('about to handleActivityPub', `${req.originalUrl}${req.url}`)
+      console.log('about to handleActivityPub', `${req.url}`)
       handleActivityPub(req, res, next);
     })().catch(next)
   }
-}
-
-
-async function createDbAdapter(
-  options: DatabaseAdapterCreationOptions
-): Promise<DbAdapter> {
-  return {
-    ...createMockDbAdapter(options),
-  } as DbAdapter
 }
 
 function withoutLeadingSlash(path: string): string {
