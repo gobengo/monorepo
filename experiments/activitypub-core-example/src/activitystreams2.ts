@@ -13,7 +13,7 @@ export const ActorTypeStrings: ActorTypeString[] = ['Application', 'Group', 'Org
  */
 export const contextUrl = "https://www.w3.org/ns/activitystreams" as const
 
-type As2TypeValue<Type extends string> = Type | [Type, ...string[]]
+export type As2TypeValue<Type> = Type | [Type, ...string[]]
 
 type ObjectWithType<TypeString extends string> = {
   type: As2TypeValue<TypeString>

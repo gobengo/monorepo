@@ -50,8 +50,7 @@ function asActor(object: unknown): Actor {
   assert(typeof inboxValue === 'string', 'actor inbox is a string')
   const inbox = new URL(inboxValue);
   const outboxValue = hasOwnProperty(object, 'outbox') && object.outbox;
-  assert(typeof outboxValue === 'string', 'actor outbox is a string')
-  const outbox = new URL(outboxValue);
+  const outbox = (typeof outboxValue === 'string') ? new URL(outboxValue) : asOrderedCollection(outboxValue);
   const actor: Actor = {
     ...object,
     id,
@@ -92,7 +91,6 @@ function asActorType(type: unknown): ActorType {
 }
 
 export function asOrderedCollection(object: unknown): OrderedCollection {
-  console.log('asOrderedCollection', object)
   assert(typeof object === 'object' && object !== null, 'orderedCollection is an object')
   assert(hasOwnProperty(object, 'type'), 'orderedCollection has a type')
   const typeArray = Array.isArray(object.type) ? object.type : [object.type];
