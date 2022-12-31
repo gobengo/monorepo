@@ -62,7 +62,7 @@ test('can create activitypub-core db adapter that finds entities', async t => {
   t.notThrows(() => asOrderedCollection(outbox));
   // outbox current page
   const outboxCurrent = await dbAdapter.findEntityById(new URL(actorUrl + 'outbox' + '?current'))
-  console.log({outboxCurrent})
+  debug('result of db.findByEntity for outbox?current', outboxCurrent)
   assert(t, outboxCurrent, 'can find current Outbox CollectionPage by id')
   assert(t, hasOwnProperty(outboxCurrent || {}, 'type'), 'outbox current page has type property')
   assert(t, hasActivityStreams2Type(outboxCurrent, 'CollectionPage'), 'outbox current page has type CollectionPage');

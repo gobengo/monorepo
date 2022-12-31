@@ -63,9 +63,9 @@ test.only('ActorServer serves actor outbox', async t => {
     return null
   }
   const server = ActorServer.create({
-    app: express().use(pinoHttp(
-      pinoHttpPrint.httpPrintFactory()()
-    )),
+    // app: express().use(pinoHttp(
+    //   pinoHttpPrint.httpPrintFactory()()
+    // )),
     getActor,
   });
   await withHttpServer(server, async (baseUrl) => {
@@ -85,7 +85,7 @@ test.only('ActorServer serves actor outbox', async t => {
     // lets try to get the page of current activities
     const outboxCurrentPageRef = outbox.current
     assert(t, typeof outboxCurrentPageRef === 'string', 'outbox.current is a string')
-    console.log({ outboxCurrentPageRef })
+    debug('outbox.current', outboxCurrentPageRef)
     const outboxCurrentUrl = new URL(outboxCurrentPageRef)
     // this fails because activitypub-core writes the current page link as localhost:3000 :/
     // const outboxCurrentPageResponse = await fetch(outboxCurrentUrl.toString())

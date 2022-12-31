@@ -7,6 +7,7 @@ import { debuglog } from 'util';
 import { toActivityPubCoreActor } from "./actor.js";
 import { APCoreActor } from "./activitypub-core.js";
 import { EdgeTraverser } from "./url";
+import { OrderedCollection } from "./activitypub";
 
 type IDatabaseAdapater = apc.DbAdapter
 
@@ -17,7 +18,7 @@ export type IMinimalApcDatabaseAdapter = Pick<IDatabaseAdapater, 'findOne'|'getA
   findEntityById(id: URL): Promise<
     | null
     | APCoreActor
-    | apc.AP.OrderedCollection & { orderedItems: URL[] }
+    | OrderedCollection
     | apc.AP.OrderedCollectionPage
   >
 }

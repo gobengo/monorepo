@@ -13,13 +13,21 @@ export type Outbox<SearchQuery> = {
   current: PagedCollection<SearchQuery>
 }
 
-export function createMockOutbox<SearchQuery>(): Outbox<SearchQuery> {
+export function createMockOutbox<SearchQuery>(
+  {
+    orderedItems = []
+  }
+  :{
+    orderedItems?: OrderedCollection["orderedItems"]
+  }
+  ={}
+): Outbox<SearchQuery> {
   return {
     type: "Outbox",
     toOrderedCollection: async () => ({
       type: "OrderedCollection",
       totalItems: 0,
-      orderedItems: [],
+      orderedItems,
     }),
     current: {
       type: "PagedCollection",
@@ -27,12 +35,7 @@ export function createMockOutbox<SearchQuery>(): Outbox<SearchQuery> {
         return {
           toOrderedCollectionPage: () => ({
             type: "OrderedCollectionPage",
-            orderedItems: [
-              {
-                type: "Note",
-                name: "A Simple Note",
-              }
-            ],
+            orderedItems,
           })
         }
       }

@@ -118,6 +118,10 @@ export function asOrderedCollection(object: unknown): OrderedCollection {
   const objectOrderedItems = hasOwnProperty(object, 'orderedItems') ? object.orderedItems : [];
   assert(Array.isArray(objectOrderedItems), 'orderedItems is an Array')
   const orderedItems = objectOrderedItems.map(item => {
+    if (typeof item === 'object') {
+      return item
+    }
+    // assume it's a string
     try {
       return new URL(item)
     } catch (error) {
