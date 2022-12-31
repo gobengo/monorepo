@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "build": "",
-    "start": "node --loader=ts-node/esm index.ts",
-    "test": "NODE_OPTIONS='--require=./suppress-experimental-warnings.cjs' ava"
+    "build": "tsc --build",
+    "start": "node --loader=ts-node/esm src/index.ts",
+    "test": "NODE_OPTIONS='--require=./src/suppress-experimental-warnings.cjs' ava"
   },
   "author": "",
   "license": "ISC",

@@ -1,0 +1,146 @@
+import test from "ava";
+import { createActorUrlResolver, createMultiActorUrlResolver } from "./actor-finder.js";
+import { addressUrl } from "./http.js";
+import { composeTestedUrlResolver, createPathSegmentUrlSpace, createTestedUrlResolver, IUrlResolver, matchers, UrlSpace, withoutTrailingSlash } from "./url.js";
+
+test('addressUrl', async (t) => {
+  t.is(addressUrl({
+    address: '::',
+    port: 3000,
+  }).toString(), 'http://localhost:3000/')
+})
+
+test('createTestedUrlResolver can resolve URLs', async (t) => {
+  const actorsUrl = new URL('http://localhost/actors/')
+  const resolve = createTestedUrlResolver({
+    test: (url) => createPathSegmentUrlSpace(actorsUrl, [undefined, matchers.exact('outbox')]).includes(url),
+    resolve: (outboxUrl) => {
+      // note: because there is no trailing slash on the outbox matcher, this will go from actor/outbox to actor
+      const actorUrl = withoutTrailingSlash(new URL('.', outboxUrl))
+      return actorUrl
+    }
+  });
+  const resolved = resolve(new URL('defaultActor/outbox', actorsUrl))
+  t.is(
+    resolved?.toString(),
+    'http://localhost/actors/defaultActor'
+  )
+})
+
+test('composeTestedUrlResolver can resolve URLs', async (t) => {
+  const resolve = composeTestedUrlResolver([
+    {
+      test: (url) => (url.pathname === '/a'),
+      resolve: (url) => url,
+    },
+    {
+      test: (url) => (url.pathname === '/b'),
+      resolve: (url) => url,
+    }
+  ])
+  const baseUrl = new URL('http://localhost')
+  t.is(resolve(new URL('/a', baseUrl))?.toString(), 'http://localhost/a')
+  t.is(resolve(new URL('/b', baseUrl))?.toString(), 'http://localhost/b')
+  t.is(resolve(new URL('/c', baseUrl)), null)
+})
+
+test('createActorUrlResolver can resolve URLs', async (t) => {
+  const cases = [
+    // actor at /
+    { actor: new URL('http://localhost/'), url: new URL('http://localhost/') },
+    { actor: new URL('http://localhost/'), url: new URL('http://localhost/outbox/') },
+    // cant resolve outbox without trailing slash
+    { actor: new URL('http://localhost/'), url: new URL('http://localhost/outbox'), expectUnresolvable: true },
+    { actor: new URL('http://localhost/'), url: new URL('http://wrongdomain.com/outbox'), expectUnresolvable: true },
+    // actor at /defaultActor
+    { actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/') },
+    { actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/outbox/') },
+    // no trailing slash on actor url should not resolve (it's a different URL. If you want this to work, redirect from '' -> '/' and then resolution will go from there)
+    { actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor'), expectUnresolvable: true },
+  ]
+  for (const { actor, url, expectUnresolvable=false } of cases) {
+    const resolve = createActorUrlResolver(actor)
+    const resolution = resolve(url)
+    if (expectUnresolvable) {
+      t.is(resolution, null, `cannot resolve ${url.toString()}`)
+    } else {
+      t.is(resolution?.toString(), actor.toString(), `resolves '${url.toString()}' to actor url at '${actor.toString()}'`)
+    }
+  }
+})
+
+test('createMultiActorUrlResolver can resolve URLs', async (t) => {
+  const cases = [
+    // actors at /
+    { actorsBase: new URL('http://localhost/'), actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/') },
+    // { actorsBase: new URL('http://localhost/'), actor: new URL('http://localhost/defaultActor/'), url: new URL('http://localhost/defaultActor/outbox/') },
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor/') },
+    // cant resolve actor url without trailing slash (if you want this to work, redirect from sans-trailing-slash to with-trailing-slash and then resolution will go from there)
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor'), expectUnresolvable: true },
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor/wtf'), expectUnresolvable: true },
+    { actorsBase: new URL('http://localhost/actors/'), actor: new URL('http://localhost/actors/defaultActor/'), url: new URL('http://localhost/actors/defaultActor/outbox/') },
+  ]
+  for (const { actorsBase, actor, url, expectUnresolvable=false } of cases) {
+    const resolve = createMultiActorUrlResolver(actorsBase)
+    t.is(resolve(url)?.toString(), expectUnresolvable ? undefined : actor.toString(), `resolves '${url.toString()}' to actor url at '${actor.toString()}'`)
+  }
+})
+
+test('PathSegmentUrlSpace cannot be created from baseUrl without trailing slash', async (t) => {
+  t.throws(() => createPathSegmentUrlSpace(new URL('http://localhost/foo'), []))
+})
+
+test('PathSegmentUrlSpace detects whether any URL is within a single path segment of a baseUrl', async (t) => {
+  const baseUrl = new URL('http://localhost')
+  const cases: Array<[space: UrlSpace, includes: URL[], doesNotInclude: URL[]]> = [
+    [
+      // zero segment after baseUrl without trailing slash
+      createPathSegmentUrlSpace(baseUrl, [], false),
+      [new URL('http://localhost')],
+      [new URL('http://localhost/foo')]
+    ],
+    [
+      // zero segment after baseUrl with trailing slash
+      createPathSegmentUrlSpace(baseUrl, [], true),
+      [new URL('http://localhost')],
+      [new URL('http://localhost/bar')]
+    ],
+    [
+      // one segment after baseUrl without trailing slash
+      createPathSegmentUrlSpace(baseUrl, [,]),
+      [new URL('foo', baseUrl)],
+      [new URL('foo/bar', baseUrl)]
+    ],
+    [
+      // one segment after baseUrl with trailing slash
+      createPathSegmentUrlSpace(baseUrl, [,], true),
+      [new URL('foo/', baseUrl)],
+      [new URL('foo', baseUrl)]
+    ],
+    [
+      // two segments after baseUrl
+      createPathSegmentUrlSpace(baseUrl, [,,]),
+      [new URL('foo/bar', baseUrl)],
+      [new URL('foo', baseUrl), new URL('foo/bar/baz', baseUrl)]
+    ],
+    [
+      // two segments after baseUrl
+      createPathSegmentUrlSpace(baseUrl, [,matchers.exact('bar')]),
+      [
+        new URL('baz/bar', baseUrl),
+        new URL('foo/bar', baseUrl)
+      ],
+      [
+        new URL('baz/bip', baseUrl),
+      ],
+    ],
+  ];
+  for (const [space, shouldInclude, shouldNotInclude] of cases) {
+    for (const url of shouldInclude) {
+      t.assert(space.includes(url), `${url} should be included in ${space}`)
+    }
+    for (const url of shouldNotInclude) {
+      t.assert( ! space.includes(url), `${url} should not be included in ${space}`)
+    }
+  }
+})
