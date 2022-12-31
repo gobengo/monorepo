@@ -2,22 +2,10 @@ import {type RequestListener} from 'node:http';
 import express from 'express';
 import * as ap from './activitypub.js';
 import type * as as2 from './activitystreams2.js';
-
 import {debuglog} from 'node:util';
+import {type ActorServerSerializer, Serialization} from './ap-serializer.js';
+import {expressSerializationResponder} from './serializer-express.js';
 const debug = debuglog(import.meta.url);
-
-export type Serialization<MediaType> = {
-	mediaType: MediaType;
-	content: string;
-};
-
-export type Serializer<T, MediaType> = (value: T, contentType: MediaType) => Serialization<Exclude<MediaType, undefined>>;
-
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-export type ActorServerSerializer<Actor, Outbox, MediaType extends typeof as2.mediaType | string | undefined> = {
-	actor: Serializer<Actor, MediaType>;
-	outbox: Serializer<Outbox, MediaType>;
-};
 
 export type ActorServerRepository<
 	Actor,
@@ -35,17 +23,6 @@ export type ActorServerRepository<
 	};
 };
 
-const expressSerializationResponder = {
-	respond<T>(request: express.Request, response: express.Response, serializer: Serializer<T, string | undefined>, value: T) {
-		const {content, mediaType} = serializer(value, request.get('accept'));
-		response
-			.status(200)
-			.set({'content-type': mediaType})
-			.send(content)
-			.end();
-	},
-};
-
 /**
  * Serves an 'actor' over HTTP using ActivityPub protocol
  */
@@ -53,6 +30,8 @@ export class ActorServer<
 	Actor,
 	Outbox,
 > {
+	protected serializationResponder = expressSerializationResponder(ap.mediaType);
+
 	protected outbox = {
 		forActor: (actorId: URL, actor: Actor): RequestListener => express()
 			.get('/', (req, res, next) => {
@@ -61,14 +40,14 @@ export class ActorServer<
 					actorId: actorId.toString(),
 				});
 				const outbox = this.repository.outbox.forActor(actorId, actor);
-				expressSerializationResponder.respond(req, res, this.serializer.outbox, outbox);
+				this.serializationResponder(req, res, mt => this.serializer.outbox(outbox, mt));
 				next();
 			}),
 	};
 
 	constructor(
 		protected repository: ActorServerRepository<Actor, Outbox>,
-		protected serializer: ActorServerSerializer<Actor, Outbox, string | undefined>,
+		protected serializer: ActorServerSerializer<Actor, Outbox>,
 	) {}
 
 	protected getActorById(id: URL): Actor {
@@ -105,7 +84,7 @@ export class ActorServer<
 			.get('/', (req, res) => {
 				const url = createRequestUrl(req);
 				const actor = this.getActorById(url);
-				expressSerializationResponder.respond(req, res, this.serializer.actor, actor);
+				this.serializationResponder(req, res, mt => this.serializer.actor(actor, mt));
 			});
 	}
 

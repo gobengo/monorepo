@@ -7,10 +7,23 @@ import {createPersonActor} from './mastodon.js';
 import * as ap from './activitypub.js';
 
 import {debuglog} from 'node:util';
+import {JsonActivityPubSerializer} from './ap-serializer.js';
 const debug = debuglog(import.meta.url);
 
 await test('serves on http', async t => {
-	const server = new ActorServer(createPersonActor);
+	const server = new ActorServer({
+		actor: {
+			get: createPersonActor,
+		},
+		outbox: {
+			forActor(actorId, actor) {
+				return {
+					type: 'OrderedCollection',
+					orderedItems: [],
+				};
+			},
+		},
+	}, new JsonActivityPubSerializer());
 	await withHttpServer(server.listener, async baseUrl => {
 		const response = await fetch(baseUrl.toString());
 		assert.strictEqual(response.status, 200);
@@ -22,6 +35,6 @@ await test('serves on http', async t => {
 
 function hasActivityPubContentType(contentTypeValue: string) {
 	const contentTypeParts = new Set(contentTypeValue?.split(';').map(s => s.trim()) ?? []);
-	assert.ok(contentTypeParts.has(ap.ldJsonMediaType), `content-type has ${ap.ldJsonMediaType}`);
+	assert.ok(contentTypeParts.has(ap.ldJsonMediaType), `content-type ${contentTypeValue} has ${ap.ldJsonMediaType}`);
 	assert.ok(contentTypeParts.has(`profile="${ap.as2ProfileUri}"`), `content-type has profile="${ap.as2ProfileUri}"`);
 }

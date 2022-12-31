@@ -3,30 +3,11 @@ import pinoHttp from 'pino-http';
 import pinoHttpPrint from 'pino-http-print';
 import {fileURLToPath} from 'node:url';
 import {addressUrl} from './src/http.js';
-import {ActorServer, type ActorServerRepository, type ActorServerSerializer} from './src/actor-server.js';
+import {ActorServer} from './src/actor-server.js';
 import {createPersonActor} from './src/mastodon.js';
-import * as as2 from './src/activitystreams2.js';
-
+import {JsonActivityPubSerializer} from './src/ap-serializer.js';
 import {debuglog} from 'node:util';
-import {type Actor} from './src/actor.js';
 const debug = debuglog(import.meta.url);
-
-class ActivityStreams2Serializer<ActorTypeString extends string, Outbox>
-implements ActorServerSerializer<Actor<ActorTypeString>, Outbox, typeof as2.mediaType | undefined> {
-	actor(actor: Actor<ActorTypeString>, contentType?: string) {
-		return {
-			mediaType: as2.mediaType,
-			content: JSON.stringify(actor),
-		};
-	}
-
-	outbox(outbox: Outbox, contentType?: string) {
-		return {
-			mediaType: as2.mediaType,
-			content: JSON.stringify(outbox),
-		};
-	}
-}
 
 async function main() {
 	console.log('starting...');
@@ -51,7 +32,7 @@ async function main() {
 						},
 					},
 				},
-				new ActivityStreams2Serializer(),
+				new JsonActivityPubSerializer(),
 			).listener,
 		);
 	const listener = app.listen(process.env.PORT ?? 0, () => {
