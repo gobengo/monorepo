@@ -1,27 +1,96 @@
 import {type RequestListener} from 'node:http';
 import express from 'express';
-import {type Actor} from './actor';
 import * as ap from './activitypub.js';
+import type * as as2 from './activitystreams2.js';
 
 import {debuglog} from 'node:util';
 const debug = debuglog(import.meta.url);
 
-export class ActorServer {
-	constructor(
-		protected getActor: (options: {
+export type Serialization<MediaType> = {
+	mediaType: MediaType;
+	content: string;
+};
+
+export type Serializer<T, MediaType> = (value: T, contentType: MediaType) => Serialization<Exclude<MediaType, undefined>>;
+
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+export type ActorServerSerializer<Actor, Outbox, MediaType extends typeof as2.mediaType | string | undefined> = {
+	actor: Serializer<Actor, MediaType>;
+	outbox: Serializer<Outbox, MediaType>;
+};
+
+export type ActorServerRepository<
+	Actor,
+	Outbox,
+> = {
+	actor: {
+		get(options: {
 			id: URL;
 			inbox: URL;
 			outbox: URL;
-		}) => Actor<string>,
+		}): Actor;
+	};
+	outbox: {
+		forActor(actorId: URL, actor: Actor): Outbox;
+	};
+};
+
+const expressSerializationResponder = {
+	respond<T>(request: express.Request, response: express.Response, serializer: Serializer<T, string | undefined>, value: T) {
+		const {content, mediaType} = serializer(value, request.get('accept'));
+		response
+			.status(200)
+			.set({'content-type': mediaType})
+			.send(content)
+			.end();
+	},
+};
+
+/**
+ * Serves an 'actor' over HTTP using ActivityPub protocol
+ */
+export class ActorServer<
+	Actor,
+	Outbox,
+> {
+	protected outbox = {
+		forActor: (actorId: URL, actor: Actor): RequestListener => express()
+			.get('/', (req, res, next) => {
+				debug('handling outbox request', {
+					url: createRequestUrl(req).toString(),
+					actorId: actorId.toString(),
+				});
+				const outbox = this.repository.outbox.forActor(actorId, actor);
+				expressSerializationResponder.respond(req, res, this.serializer.outbox, outbox);
+				next();
+			}),
+	};
+
+	constructor(
+		protected repository: ActorServerRepository<Actor, Outbox>,
+		protected serializer: ActorServerSerializer<Actor, Outbox, string | undefined>,
 	) {}
+
+	protected getActorById(id: URL): Actor {
+		return this.repository.actor.get({
+			id,
+			inbox: new URL('inbox/', id),
+			outbox: new URL('outbox/', id),
+		});
+	}
 
 	/**
 	 * Listen for http requests and serve all endpoints at appropriate paths
 	 */
 	get listener(): RequestListener {
-		return express()
-			.get('/', this.actor)
-			.get('/.well-known/webfinger', this.webfinger);
+		return express().use((req, res, next) => {
+			const actorId = createRequestUrl(req, req.baseUrl);
+			const handle = express()
+				.get('/', this.actor)
+				.use('/outbox', this.outbox.forActor(actorId, this.getActorById(actorId)))
+				.get('/.well-known/webfinger', this.webfinger);
+			handle(req, res, next);
+		});
 	}
 
 	/**
@@ -29,19 +98,14 @@ export class ActorServer {
 	 */
 	protected get actor(): RequestListener {
 		return express()
+			.use((req, res, next) => {
+				debug('in actor endpoint', req.originalUrl, req.url, req.baseUrl);
+				next();
+			})
 			.get('/', (req, res) => {
 				const url = createRequestUrl(req);
-				res.status(200);
-				res.set({
-					'Content-Type': ap.mediaType,
-				});
-				const actor = this.getActor({
-					id: url,
-					inbox: new URL('inbox', url),
-					outbox: new URL('outbox', url),
-				});
-				res.send(JSON.stringify(actor, null, 2));
-				res.end();
+				const actor = this.getActorById(url);
+				expressSerializationResponder.respond(req, res, this.serializer.actor, actor);
 			});
 	}
 
@@ -49,7 +113,6 @@ export class ActorServer {
 	 * Webfinger endpoint - responds with a description of the ?resource acct uri
 	 */
 	protected get webfinger(): RequestListener {
-		debug('accessing .webfinger');
 		return express().use((req, res, next) => {
 			const {resource} = req.query;
 			debug('in webfinger', {
@@ -115,7 +178,8 @@ function createJsonResourceDescriptorForActor(
 	};
 }
 
-function createRequestUrl(req: express.Request, pathname?: string): URL {
-	const url = new URL(req.originalUrl, `${req.protocol}://${req.headers.host ?? ''}${pathname ?? req.originalUrl}`);
+function createRequestUrl(req: express.Request, withPathname?: string): URL {
+	const pathname = (typeof withPathname === 'undefined') ? req.originalUrl : withPathname;
+	const url = new URL(`${req.protocol}://${req.headers.host ?? ''}${pathname}`);
 	return url;
 }
