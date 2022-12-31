@@ -25,11 +25,12 @@ export async function toActivityPubCoreActor(actor: Actor, urls: {
   id: URL,
   inbox?: URL,
   outbox?: URL,
-}): Promise<APCoreActor> {
+}): Promise<APCoreActor & { discoverable: true }> {
   return {
     type: actor.type,
     id: urls.id,
     outbox: urls.outbox || await actor.outbox.toOrderedCollection(),
-    inbox: urls.inbox || new URL('http://localhost/inbox/#todo-actor-toActivityPubCoreActor'),
+    inbox: new URL('/inbox', urls.id),
+    discoverable: true,
   }
 }

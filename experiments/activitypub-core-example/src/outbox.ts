@@ -13,12 +13,16 @@ export type Outbox<SearchQuery> = {
   current: PagedCollection<SearchQuery>
 }
 
-export function createMockOutbox<SearchQuery>(
+interface HasUrl {
+  url: URL
+}
+
+export function createMockOutbox<SearchQuery, Item extends HasUrl>(
   {
     orderedItems = []
   }
   :{
-    orderedItems?: OrderedCollection["orderedItems"]
+    orderedItems?: Array<URL | Item>
   }
   ={}
 ): Outbox<SearchQuery> {
@@ -27,7 +31,10 @@ export function createMockOutbox<SearchQuery>(
     toOrderedCollection: async () => ({
       type: "OrderedCollection",
       totalItems: 0,
-      orderedItems,
+      orderedItems: orderedItems.map(item => {
+        if (item instanceof URL) { return item }
+        return item.url;
+      }),
     }),
     current: {
       type: "PagedCollection",
@@ -35,7 +42,10 @@ export function createMockOutbox<SearchQuery>(
         return {
           toOrderedCollectionPage: () => ({
             type: "OrderedCollectionPage",
-            orderedItems,
+            orderedItems: orderedItems.map(item => {
+              if (item instanceof URL) { return item }
+              return item.url;
+            }),
           })
         }
       }

@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 import { ActorServer } from "./actor-server.js";
 import { addressUrl } from "./http.js";
 import { createMockActor } from "./actor.js";
+import { createMockOutbox } from "./outbox.js";
+
+import { debuglog } from "util"
+
+const debug = debuglog('activitypub-core-example')
 
 if (import.meta.url.startsWith('file:')) {
   const modulePath = fileURLToPath(import.meta.url);
@@ -13,18 +18,39 @@ if (import.meta.url.startsWith('file:')) {
   }
 }
 
-
-
 async function main() {
   console.log('starting...')
+  const publicBaseUrl = new URL(readEnv('PUBLIC_BASE_URL'))
+  const note1 = {
+    type: "Note",
+    content: 'foobar',
+  }
   const app = ActorServer.create({
     app: express()
       .use(pinoHttp(
         pinoHttpPrint.httpPrintFactory()()
-      )),
-    publicBaseUrl: new URL(readEnv('PUBLIC_BASE_URL')),
-    getActor: async () => {
-      return createMockActor();
+      ))
+      .get('/notes/:id', (req, res) => {
+        res.status(200).json(note1).end()
+      })
+      ,
+    publicBaseUrl,
+    getActor: async (ref) => {
+      const actorUrl = (ref as any).url as URL
+      debug('getActor', {
+        ...ref,
+        url: actorUrl.toString(),
+      })
+      return createMockActor({
+        outbox: createMockOutbox({
+          orderedItems: [
+            {
+              ...note1,
+              url: new URL('/notes/1', actorUrl),
+            },
+          ]
+        })
+      });
     },
   });
   const listener = app.listen(process.env.PORT ?? 0, () => {

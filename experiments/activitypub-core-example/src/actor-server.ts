@@ -33,6 +33,7 @@ export class ActorServer {
     }
     app
     .use(function (req, res, next) {
+      const baseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}${req.baseUrl}`);
       try {
         const parseUrlToActivityPubResourceRef = createActivityPubCoreServerExpressUrlParser({
           extractActorRef: (url: URL) => {
@@ -42,6 +43,7 @@ export class ActorServer {
               type: "Actor",
               // only first segment
               path,
+              url: baseUrl,
             } as const
             debug('parseUrlToActivityPubResourceRef', {
               url: url.toString(),
@@ -134,13 +136,13 @@ export class ActorServer {
         next(error)
       }
     })
-    app.get('/', (req, res) => {
-      res.writeHead(200)
-      res.send(`
-        <!doctype html>
-        activitypub-core-example
-      `)
-    })
+    // app.get('/', (req, res) => {
+    //   res.writeHead(200)
+    //   res.send(`
+    //     <!doctype html>
+    //     activitypub-core-example
+    //   `)
+    // })
     return app;
   }
 }
