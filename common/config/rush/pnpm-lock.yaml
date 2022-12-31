@@ -38,6 +38,29 @@ importers:
       ts-node: 10.9.1_63890beeeccde17018ba967cc82821fb
       typescript: 4.9.4
 
+  ../../experiments/simple-activitypub-actor:
+    specifiers:
+      '@types/express': ~4.17.15
+      '@types/node': ~18.11.17
+      ava: ~5.1.0
+      express: ~4.18.2
+      pino-http: ~8.3.0
+      pino-http-print: ~3.1.0
+      ts-node: ~10.9.1
+      ts-node-test: ^0.3.0
+      typescript: ~4.9.4
+    dependencies:
+      express: 4.18.2
+      pino-http: 8.3.0
+      pino-http-print: 3.1.0
+    devDependencies:
+      '@types/express': 4.17.15
+      '@types/node': 18.11.17
+      ava: 5.1.0
+      ts-node: 10.9.1_63890beeeccde17018ba967cc82821fb
+      ts-node-test: 0.3.0_63890beeeccde17018ba967cc82821fb
+      typescript: 4.9.4
+
   ../../interoperating.app/common:
     specifiers:
       '@types/node': ^10.9.4
@@ -8027,6 +8050,22 @@ packages:
       micromatch: 4.0.5
       semver: 7.3.7
       typescript: 4.5.5
+    dev: true
+
+  /ts-node-test/0.3.0_63890beeeccde17018ba967cc82821fb:
+    resolution: {integrity: sha512-0zkYxKYVZ49VjWFYnx6ump0ortTbrEwOQqdXQA1UCr4ZxiUXvTHUKLwt0S3Joyix5+gGR8+8mtYWgzNvryIDhQ==}
+    engines: {node: '>=18.7.0'}
+    hasBin: true
+    peerDependencies:
+      typescript: ^4.0.0
+    dependencies:
+      ts-node: 10.9.1_63890beeeccde17018ba967cc82821fb
+      typescript: 4.9.4
+      yargs: 17.6.2
+    transitivePeerDependencies:
+      - '@swc/core'
+      - '@swc/wasm'
+      - '@types/node'
     dev: true
 
   /ts-node/10.9.1_63890beeeccde17018ba967cc82821fb:

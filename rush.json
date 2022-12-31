@@ -411,6 +411,10 @@
     {
       "packageName": "@bengo.is/activitypub-core-example",
       "projectFolder": "experiments/activitypub-core-example"
+    },
+    {
+      "packageName": "@bengo.is/simple-activitypub-actor",
+      "projectFolder": "experiments/simple-activitypub-actor"
     }
     // {
     //   /**
