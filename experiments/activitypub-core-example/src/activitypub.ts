@@ -16,7 +16,12 @@ export type Actor = Omit<APCore.Actor, 'type'> & {
 }
 export type OrderedCollection = Omit<APCore.OrderedCollection, 'type'> & {
   // this type is a bit more accurate than the activitypub-core-types type
-  type: 'OrderedCollection'
+  type: 'OrderedCollection',
+  orderedItems: URL[],
+}
+
+export type OrderedCollectionPage = Omit<APCore.OrderedCollectionPage, 'type'> & {
+  type: 'OrderedCollectionPage'
 }
 
 export function actorFetcher(fetch: typeof globalThis.fetch) {
@@ -76,11 +81,15 @@ function asActorType(type: unknown): ActorType {
       foundNonActorTypes.push(t)
     }
   }
-  if ( ! foundActorTypes.length) {
+  const [firstFoundActorType, ...restFoundActorTypes] = foundActorTypes
+  if ( ! firstFoundActorType) {
     throw new Error(`invalid actor type: ${type}`)
   }
-  const [firstFoundActorType, ...restFoundActorTypes] = foundActorTypes
-  const typesWithActorTypesFirst: ActorType = [firstFoundActorType, ...restFoundActorTypes, ...foundNonActorTypes]
+  const typesWithActorTypesFirst: ActorType = [
+    firstFoundActorType,
+    ...restFoundActorTypes,
+    ...foundNonActorTypes,
+  ]
   switch (typesWithActorTypesFirst.length) {
     case 0:
       throw new Error(`invalid actor type: ${type}`)
@@ -95,16 +104,32 @@ export function asOrderedCollection(object: unknown): OrderedCollection {
   assert(hasOwnProperty(object, 'type'), 'orderedCollection has a type')
   const typeArray = Array.isArray(object.type) ? object.type : [object.type];
   if ( ! typeArray.includes('OrderedCollection')) {
-    throw new Error('not an ordered collection')
+    throw new Error(`expected OrderedCollection type, but got ${typeArray.join(',')}`)
   }
   if (hasOwnProperty(object, 'totalItems')) {
     assert(typeof object.totalItems === 'number')
   }
-  assert(hasOwnProperty(object, 'orderedItems') && Array.isArray(object.orderedItems))
+  if (hasOwnProperty(object, 'orderedItems')) {
+    assert(Array.isArray(object.orderedItems), 'orderedItems is an Array')
+  }
+  if (hasOwnProperty(object, 'items') && hasOwnProperty(object, 'orderedItems')) {
+    throw new Error('OrderedCollection should not have both items and orderedItems')
+  }
+  const objectOrderedItems = hasOwnProperty(object, 'orderedItems') ? object.orderedItems : [];
+  assert(Array.isArray(objectOrderedItems), 'orderedItems is an Array')
+  const orderedItems = objectOrderedItems.map(item => {
+    try {
+      return new URL(item)
+    } catch (error) {
+      throw new Error(`invalid url orderedItem: ${item}`, {
+        cause: error,
+      })
+    }
+  })
   const orderedCollection = {
     ...object,
     type: 'OrderedCollection' as const,
-    orderedItems: Array.from(object.orderedItems),
+    orderedItems,
   }
   return orderedCollection;
 }

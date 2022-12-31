@@ -80,7 +80,11 @@ export function createPathSegmentUrlSpace(baseUrl: URL, segmentExpectations: Arr
       return false;
     }
     for (const [i, expectation] of slashSplitSegmentExpectations.entries()) {
-      if (expectation && ! expectation.test(segments[i])) {
+      const segment = segments[i]
+      if (typeof segment !== 'string') {
+        throw new Error(`unexpected segment ${segment} at index ${i}`)
+      }
+      if (expectation && ! expectation.test(segment)) {
         return false;
       }
     }

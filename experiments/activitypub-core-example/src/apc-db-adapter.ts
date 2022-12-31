@@ -14,7 +14,12 @@ type IDatabaseAdapater = apc.DbAdapter
  * minimal db-adapter interface that seems to work for simple activitypub-core use cases
  */
 export type IMinimalApcDatabaseAdapter = Pick<IDatabaseAdapater, 'findOne'|'getActorByUserId'> & {
-  findEntityById(id: URL): Promise<null | APCoreActor | apc.AP.OrderedCollection>
+  findEntityById(id: URL): Promise<
+    | null
+    | APCoreActor
+    | apc.AP.OrderedCollection & { orderedItems: URL[] }
+    | apc.AP.OrderedCollectionPage
+  >
 }
 
 const debug = debuglog('apc-db-adapter')
@@ -25,7 +30,7 @@ const debug = debuglog('apc-db-adapter')
  */
 export class DatabaseAdapter implements IMinimalApcDatabaseAdapter {
   static create(options: {
-    resolve: IActivityPubUrlResolver,
+    resolve: IActivityPubUrlResolver<URLSearchParams>,
     urls: IActivityPubTraversers,
     getExternalUrl?: (url: URL) => URL,
   }) {
@@ -36,7 +41,7 @@ export class DatabaseAdapter implements IMinimalApcDatabaseAdapter {
     )
   }
   protected constructor(
-    private readonly resolve: IActivityPubUrlResolver,
+    private readonly resolve: IActivityPubUrlResolver<URLSearchParams>,
     private readonly urls: IActivityPubTraversers,
     /**
      * activitypub-core builds its own URL like 'http://localhost:3000/' for the id
@@ -50,14 +55,16 @@ export class DatabaseAdapter implements IMinimalApcDatabaseAdapter {
     const id = this.getExternalUrl(wrongId)
     debug('corrected apc id to external url id', id.toString())
     const resolution = await this.resolve(id)
-    if ( ! resolution) return resolution
-    console.log('DatabaseAdapter findEntityById', {
+    debug('DatabaseAdapter findEntityById', {
       id: id.toString(),
       resolution,
     })
+    if ( ! resolution) return resolution
     switch (resolution.type) {
       case 'Outbox':
         return resolution.toOrderedCollection()
+      case 'PagedCollection':
+        return resolution.search(id.searchParams).toOrderedCollectionPage()
     }
     return toActivityPubCoreActor(resolution, {
       id,

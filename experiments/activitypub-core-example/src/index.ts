@@ -23,7 +23,7 @@ async function main() {
         pinoHttpPrint.httpPrintFactory()()
       )),
     publicBaseUrl: new URL(readEnv('PUBLIC_BASE_URL')),
-    getActorById: async (id) => {
+    getActor: async () => {
       return createMockActor();
     },
   });

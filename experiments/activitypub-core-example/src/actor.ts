@@ -1,15 +1,13 @@
 import { createMockOutbox, Outbox } from "./outbox.js"
-import type * as APC from "activitypub-core-types";
-import type { Actor as ActivityPubActor } from "./activitypub"
 import { ActorType } from "./activitystreams2";
 import { APCoreActor } from "./activitypub-core.js";
 
 type UUID = string
 
-export type Actor = {
+export type Actor<CollectionSearchQuery=unknown> = {
   type: ActorType
   uuid: UUID
-  outbox: Outbox
+  outbox: Outbox<CollectionSearchQuery>
 }
 
 export function createMockActor({

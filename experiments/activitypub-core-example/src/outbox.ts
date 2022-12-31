@@ -1,11 +1,19 @@
-import { OrderedCollection } from "./activitypub"
+import { OrderedCollection, OrderedCollectionPage } from "./activitypub"
 
-export type Outbox = {
-  type: "Outbox",
-  toOrderedCollection: () => Promise<OrderedCollection>
+export interface PagedCollection<SearchQuery> {
+  type: "PagedCollection"
+  search(query: SearchQuery): {
+    toOrderedCollectionPage(): OrderedCollectionPage
+  }
 }
 
-export function createMockOutbox(): Outbox {
+export type Outbox<SearchQuery> = {
+  type: "Outbox",
+  toOrderedCollection: () => Promise<OrderedCollection>
+  current: PagedCollection<SearchQuery>
+}
+
+export function createMockOutbox<SearchQuery>(): Outbox<SearchQuery> {
   return {
     type: "Outbox",
     toOrderedCollection: async () => ({
@@ -13,5 +21,21 @@ export function createMockOutbox(): Outbox {
       totalItems: 0,
       orderedItems: [],
     }),
+    current: {
+      type: "PagedCollection",
+      search: (query: SearchQuery) => {
+        return {
+          toOrderedCollectionPage: () => ({
+            type: "OrderedCollectionPage",
+            orderedItems: [
+              {
+                type: "Note",
+                name: "A Simple Note",
+              }
+            ],
+          })
+        }
+      }
+    }
   }
 }

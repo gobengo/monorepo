@@ -38,6 +38,9 @@ export class MultiActorRepository implements IActorRepository {
     }
     const actorSuffix = url.toString().slice(actorsUrlString.length)
     const actorPathSegment = actorSuffix.split('/')[0]
+    if (typeof actorPathSegment !== 'string') {
+      throw new Error(`unexpected actorPathSegment ${actorPathSegment}`)
+    }
     return this.getByPathSegment(actorPathSegment)
   }
 }

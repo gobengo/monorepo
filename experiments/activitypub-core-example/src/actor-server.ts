@@ -13,6 +13,9 @@ import type { IMinimalApcDatabaseAdapter } from "./apc-db-adapter"
 import { UrlPathTraverser } from "./url.js"
 import { IActivityPubTraversers } from "./ap-url-parser.js";
 import { Actor } from "./actor.js";
+import { createActivityPubCoreServerExpressUrlParser, UrlPathActorRef } from "./apcse-url-parser.js";
+import { IUrlPath, pathFromUrl } from "./url-path.js";
+import { createActorResourceRefResolver, IActivityPubResourceResolver } from "./ap-resolver.js";
 
 const debug = debuglog('actor-server');
 
@@ -20,7 +23,7 @@ export class ActorServer {
   static create(options: {
     app?: express.Express,
     publicBaseUrl?: URL,
-    getActorById: (id: URL) => Promise<Actor|null>
+    getActor: (ref: { path: IUrlPath }) => Promise<Actor<URLSearchParams>|null>
   }) {
     const {
       app = express(),
@@ -28,67 +31,108 @@ export class ActorServer {
     const urls: IActivityPubTraversers = {
       outbox: UrlPathTraverser.create('outbox')
     }
-    const resolve: IActivityPubUrlResolver = async (url) => {
-      debug('resolving', url.toString())
-      if (url.pathname === '/') {
-        // it's an actor
-        const actor = await options.getActorById(url)
-        return actor;
-      }
-      const actorUriForOutbox = urls.outbox.invert(url);
-      if (actorUriForOutbox) {
-        const actor = await options.getActorById(url)
-        debug('got actor for outbox', {
-          actor,
-          outboxUri: url.toString(),
-        })
-        return actor ? actor.outbox : null;
-      }
-      debug('could not resolve anything for uri', url.toString())
-      return null;
-    }
     app
-    // .use(function (req, res, next) {
-    //   (async () => {
-    //     const fullUrl = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`)
-    //     debug('ben testing resolver', fullUrl.toString());
-    //     const resolution = await resolve(fullUrl)
-    //     debug('resolution', resolution)
-    //   })().then(next).catch(next);
-    // })
     .use(function (req, res, next) {
-      const dbAdapter = DatabaseAdapter.create({
-        resolve,
-        urls,
-        getExternalUrl: (url) => {
-          debug('getExternalUrl', url.toString())
-          const baseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}${req.baseUrl}`)
-          const externalUrl = new URL(baseUrl + withoutLeadingSlash(req.url))
-          debug('built externalUrl', {
-            baseUrl: baseUrl.toString(),
-            externalUrl: externalUrl.toString(),
+      try {
+        const parseUrlToActivityPubResourceRef = createActivityPubCoreServerExpressUrlParser({
+          extractActorRef: (url: URL) => {
+            // @todo consider supporting more than just []
+            const path: IUrlPath = [] // pathFromUrl(url).slice(0,1)
+            const actorRef = {
+              type: "Actor",
+              // only first segment
+              path,
+            } as const
+            debug('parseUrlToActivityPubResourceRef', {
+              url: url.toString(),
+              req: {
+                baseUrl: req.baseUrl,
+                url: req.url,
+              },
+              actorRef,
+            })
+            return actorRef
+          }
+        })
+        async function resolve(url: URL) {
+          debug('resolve start', {
+            url: url.toString(),
           })
-          return externalUrl
-        }
-      });
-      const serverBaseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}`)
-      const activityPubBaseUrl = serverBaseUrl
-      const handleWithActivityPubCore = createActivityPubCoreHandler({
-        publicBaseUrl: activityPubBaseUrl,
-        dbAdapter,
-      })
-      const handleWithExpress = express()
-        .use(handleWithActivityPubCore)
-        .use(function (req, res, next) {
-          const prefixes = ['/.well-known/webfinger'];
-          for (const _ of prefixes) {
-            if (req.url.startsWith(_)) {
-              return handleWithActivityPubCore(req, res, next)
+          const parsed = parseUrlToActivityPubResourceRef(url)
+          debug('resolve parsed', {
+            url: url.toString(),
+            parsed,
+          })
+          if ( ! parsed) {
+            return null;
+          }
+          const parsedType = parsed.type;
+          const actorRef = (() => {
+            const parsedType = parsed.type;
+            switch (parsedType) {
+              case "Outbox":
+              case "OutboxPage":
+                return parsed.actor;
+              case "Actor":
+                return parsed
             }
-            next();
+            const _: never = parsedType
+          })();
+          const actor = await options.getActor(actorRef);
+          if ( ! actor) {
+            return null;
+          }
+          const resolveResource: IActivityPubResourceResolver<UrlPathActorRef, URLSearchParams> = createActorResourceRefResolver(actor);
+          const resolved = (() => {
+            switch (parsedType) {
+              case 'Actor':
+                return resolveResource(parsed);
+              case 'Outbox':
+                return resolveResource(parsed);
+              case 'OutboxPage':
+                return resolveResource(parsed);
+            }
+            const _: never = parsedType
+            throw new Error(`unexpected parsedType ${parsedType}`)
+          })();
+          debug('resolve resolved', resolved)
+          return resolved;
+        }
+        const dbAdapter = DatabaseAdapter.create({
+          resolve,
+          urls,
+          getExternalUrl: (url) => {
+            debug('getExternalUrl', url.toString())
+            const baseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}${req.baseUrl}`)
+            const externalUrl = new URL(baseUrl + withoutLeadingSlash(req.url))
+            debug('built externalUrl', {
+              baseUrl: baseUrl.toString(),
+              externalUrl: externalUrl.toString(),
+            })
+            return externalUrl
           }
         });
-      handleWithExpress(req, res, next)
+        const serverBaseUrl = options.publicBaseUrl || new URL(`${req.protocol}://${req.get('host')}`)
+        const activityPubBaseUrl = serverBaseUrl
+        const handleWithActivityPubCore = createActivityPubCoreHandler({
+          publicBaseUrl: activityPubBaseUrl,
+          dbAdapter,
+        })
+        const handleWithExpress = express()
+          .use(handleWithActivityPubCore)
+          .use(function (req, res, next) {
+            const prefixes = ['/.well-known/webfinger'];
+            for (const _ of prefixes) {
+              if (req.url.startsWith(_)) {
+                return handleWithActivityPubCore(req, res, next)
+              }
+              next();
+            }
+          });
+        handleWithExpress(req, res, next)
+      } catch (error) {
+        next(error)
+      }
     })
     app.get('/', (req, res) => {
       res.writeHead(200)
@@ -110,7 +154,7 @@ export function createActivityPubCoreHandler(options: {
   } = options;
   const db = options.dbAdapter as unknown as DbAdapter;
   return function handleWithActivityPubCore(req, res, next) {
-    console.log('in handleWithActivityPubCore', {
+    debug('in handleWithActivityPubCore', {
       originalUrl: req.originalUrl
     });
     (async () => {
@@ -138,9 +182,9 @@ export function createActivityPubCoreHandler(options: {
           login: renderActivityPubExpressPage,
         },
       });
-      console.log('about to handleActivityPub', `${req.url}`)
+      debug('about to handleActivityPub', `${req.url}`)
       handleActivityPub(req, res, next);
-    })().catch(next)
+    })().then(next).catch(next)
   }
 }
 
@@ -155,7 +199,7 @@ function createMockDbAdapter(
   const createActorOptions = (actorPath: string): Parameters<typeof createPersonActor>[0] => {
     const publicActivityPubUrl = ensureTrailingSlash(options.publicBaseUrl)
     const entityUrl = ensureTrailingSlash(new URL(withoutLeadingSlash(actorPath), publicActivityPubUrl))
-    console.log('in mock adater', {
+    debug('in mock adater', {
       actorPath,
       entityUrl: entityUrl.toString(),
       publicActivityPubUrl: publicActivityPubUrl.toString(),
@@ -171,11 +215,11 @@ function createMockDbAdapter(
     // if there is an options.activityPubMountPath
     // id will be like 'http://localhost:3000/entity/default' even if the actual request was different
     // because it won't know about activityPubMountPath
-    console.log('findEntityById', id.toString())
+    debug('findEntityById', id.toString())
     return createPersonActor(createActorOptions(id.pathname))
   }
   const findOne: DbAdapter['findOne'] = async function (args: unknown) {
-    console.log('findOne', arguments)
+    debug('findOne', arguments)
     return createPersonActor(createActorOptions('/entity/default'))
   }
   const getActorByUserId: DbAdapter['getActorByUserId'] = async (userId: string) => {
@@ -220,7 +264,7 @@ function createPersonActor(options: {
  */
 export function redirectActivityPubGet(redirectTo: string): express.Handler {
   return function (req, res, next) {
-    console.log('in redirectActivityPubGet', {
+    debug('in redirectActivityPubGet', {
       url: req.url,
       accept: req.headers.accept,
     })

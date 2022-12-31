@@ -1,17 +1,19 @@
 import { ActivityPubUrlParser, ActivityPubUrlParseResult } from "./ap-url-parser.js";
 import type { IActorRepository } from './actor-repository.js';
 import type { Actor } from "./actor.js";
-import { Outbox } from "./outbox.js";
+import { Outbox, PagedCollection } from "./outbox.js";
 import { withHostname } from "./url.js";
 
-export interface IActivityPubUrlResolver {
-  (url: URL): Promise<null | Actor | Outbox>
+export interface IActivityPubUrlResolver<SearchQuery> {
+  (url: URL): Promise<null | Actor | Outbox<SearchQuery> | PagedCollection<SearchQuery>>
 }
 
-export function createActivityPubUrlResolver(options: {
+export function createActivityPubUrlResolver<
+  SearchQuery,
+>(options: {
   parser: ActivityPubUrlParser,
   actors: IActorRepository,
-}): IActivityPubUrlResolver {
+}): IActivityPubUrlResolver<SearchQuery> {
   return async (url: URL) => {
     const { parser, actors } = options;
     const parsed = parser.parse(url);
@@ -24,10 +26,10 @@ export function createActivityPubUrlResolver(options: {
   }
 }
 
-export async function resolveActorRelation(
+export async function resolveActorRelation<SearchQuery>(
   actor: Actor,
   relation: ActivityPubUrlParseResult['relation']
-): ReturnType<IActivityPubUrlResolver> {
+): ReturnType<IActivityPubUrlResolver<SearchQuery>> {
   switch (relation) {
     case 'self':
       return actor;
@@ -38,23 +40,13 @@ export async function resolveActorRelation(
   throw new Error(`unexpected parsed activitypub url relation ${relation}`)
 }
 
-export function createResolverForActor(
+export function createResolverForActor<SearchQuery>(
   parser: ActivityPubUrlParser,
   actor: Actor
-): IActivityPubUrlResolver {
+): IActivityPubUrlResolver<SearchQuery> {
   return async (url) => {
     const parsed = parser.parse(url);
     if ( ! parsed) return null;
     return resolveActorRelation(actor, parsed.relation)
-  }
-}
-
-export function localhostResolver(resolve: IActivityPubUrlResolver): IActivityPubUrlResolver {
-  return async (url) => {
-    const localizedUrl = withHostname(url, 'localhost');
-    console.log('localhostResolver resolving using localizedUrl', localizedUrl.toString())
-    const resolution = await resolve(localizedUrl);
-    // @todo consider rewriting URLs to the original host
-    return resolution;
   }
 }
