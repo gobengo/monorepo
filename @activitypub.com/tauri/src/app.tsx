@@ -3,24 +3,33 @@ import preactLogo from "./assets/preact.svg";
 import { invoke } from "@tauri-apps/api/tauri";
 import "./app.css";
 import { documentDir } from '@tauri-apps/api/path';
+import { signal, effect, computed, useSignal, useSignalEffect, useComputed } from "@preact/signals";
+
+type Actor = {
+  name: string;
+}
+
+class ActorResolver {
+  static async resolve(name: string): Promise<Actor> {
+    return { name };
+  }
+}
 
 export function App<FC>() {
-  const [greetMsg, setGreetMsg] = useState<string>("");
-  const [name, setName] = useState<string>("");
-  const [docDir, setDocDir] = useState<string>("");
-
-  useEffect(
-    () => {
-      (async () => {
-        setDocDir(await documentDir());
-      })()
-    },
-    [documentDir]
-  )
-
+  const name = useSignal("")
+  const greetMsg = useSignal("")
+  const actor = useSignal<Actor|undefined>(undefined)
+  useSignalEffect(() => {
+    Promise
+    .all([name.value])
+    .then(async ([actorName]) => {
+      const resolved = await ActorResolver.resolve(actorName)
+      actor.value = resolved
+    })
+  })
   const greet = async () => {
     // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-    setGreetMsg(await invoke("greet", { name }));
+    greetMsg.value = (await invoke("greet", { name: name.value }));
   };
 
   return (
@@ -39,13 +48,16 @@ export function App<FC>() {
       </div>
 
       <p>Click on the Tauri, Vite, and Preact logos to learn more.</p>
-      <p>Downloads: {docDir}</p>
+
+      {actor.value && <div>
+        <pre>{JSON.stringify(actor.value, undefined, 2)}</pre>
+      </div>}
 
       <div class="row">
         <div>
           <input
             id="greet-input"
-            onChange={(e) => setName(e.currentTarget.value)}
+            onChange={(e) => name.value = (e.currentTarget.value)}
             placeholder="Enter a name..."
           />
           <button type="button" onClick={() => greet()}>
