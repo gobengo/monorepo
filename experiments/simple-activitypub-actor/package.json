@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "start": "node --loader=ts-node/esm index.ts",
-    "test": "tap --node-arg='--loader=ts-node/esm'",
+    "test": "NODE_OPTIONS='--require=./suppress-experimental-warnings.cjs' tap --node-arg='--loader=ts-node/esm'",
     "lint": "eslint '**/*.ts'"
   },
   "author": "",
