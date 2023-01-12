@@ -19,7 +19,7 @@ export type ActorServerRepository<
 		}): Actor;
 	};
 	outbox: {
-		forActor(actorId: URL, actor: Actor): Outbox;
+		forActor(actorId: URL, actor: Actor, outboxUrl: URL): Outbox;
 	};
 };
 
@@ -35,11 +35,14 @@ export class ActorServer<
 	protected outbox = {
 		forActor: (actorId: URL, actor: Actor): RequestListener => express()
 			.get('/', (req, res, next) => {
+				const outboxUrl = createRequestUrl(req);
 				debug('handling outbox request', {
-					url: createRequestUrl(req).toString(),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					trustProxy: req.app.get('trust proxy'),
+					url: outboxUrl.toString(),
 					actorId: actorId.toString(),
 				});
-				const outbox = this.repository.outbox.forActor(actorId, actor);
+				const outbox = this.repository.outbox.forActor(actorId, actor, outboxUrl);
 				this.serializationResponder(req, res, mt => this.serializer.outbox(outbox, mt));
 				next();
 			}),
@@ -64,10 +67,16 @@ export class ActorServer<
 	get listener(): RequestListener {
 		return express().use((req, res, next) => {
 			const actorId = createRequestUrl(req, req.baseUrl);
+			debug('in ActorServer listener', {
+				actorId: actorId.toString(),
+				trustProxy: req.app.get('trust proxy'),
+			});
 			const handle = express()
-				.get('/', this.actor)
+				.set('trust proxy', req.app.get('trust proxy'))
+				// These must use `.use()` to inherit express app settings e.g. 'trust proxy'
+				.use('/', this.actor)
 				.use('/outbox', this.outbox.forActor(actorId, this.getActorById(actorId)))
-				.get('/.well-known/webfinger', this.webfinger);
+				.use('/.well-known/webfinger', this.webfinger);
 			handle(req, res, next);
 		});
 	}
@@ -78,7 +87,9 @@ export class ActorServer<
 	protected get actor(): RequestListener {
 		return express()
 			.use((req, res, next) => {
-				debug('in actor endpoint', req.originalUrl, req.url, req.baseUrl);
+				debug('in actor endpoint', req.originalUrl, req.url, req.baseUrl, {
+					trustProxy: req.app.get('trust proxy'),
+				});
 				next();
 			})
 			.get('/', (req, res) => {
@@ -125,7 +136,7 @@ function isAcctUri(uri: unknown): uri is AcctUri {
 		return false;
 	}
 
-	const pattern = /acct:([^@]+)@(.+)$/;
+	const pattern = /acct:([^@]*)@(.+)$/;
 	return pattern.test(uri);
 }
 

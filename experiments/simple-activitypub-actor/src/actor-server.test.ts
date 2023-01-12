@@ -67,6 +67,7 @@ class Outbox implements As2OutboxInterface {
 }
 
 await test('serves on http', async t => {
+	const exampleOutboxItems = Array.from({length: Math.round(Math.random() * 10)}, () => createRandomActivity());
 	const server = new ActorServer({
 		actor: {
 			get: createPersonActor,
@@ -75,7 +76,9 @@ await test('serves on http', async t => {
 			forActor(actorId, actor) {
 				return {
 					type: 'OrderedCollection',
-					orderedItems: [],
+					orderedItems: [
+						...exampleOutboxItems,
+					],
 				};
 			},
 		},
@@ -95,6 +98,37 @@ await test('serves on http', async t => {
 
 		const outbox = Outbox.parse(outboxResponseObject);
 		assert.equal(outbox.type, 'OrderedCollection');
+
+		assert.equal(outbox.orderedItems.length, exampleOutboxItems.length, 'outbox has items from exampleOutboxItems');
+	});
+});
+
+await test('serves actor extra info from actor endpoint', async t => {
+	const server = new ActorServer({
+		actor: {
+			get(options) {
+				return {
+					...createPersonActor(options),
+					icon: {
+						type: 'Image',
+						url: 'https://i.pravatar.cc/300',
+					},
+				};
+			},
+		},
+		outbox: {
+			forActor(actorId, actor) {
+				return {
+					type: 'OrderedCollection',
+					orderedItems: [],
+				};
+			},
+		},
+	}, new JsonActivityPubSerializer());
+	await withHttpServer(server.listener, async baseUrl => {
+		const response = await fetch(baseUrl);
+		assert.strictEqual(response.status, 200);
+		console.log('got response', await response.json());
 	});
 });
 
@@ -102,4 +136,14 @@ function hasActivityPubContentType(contentTypeValue: string) {
 	const contentTypeParts = new Set(contentTypeValue?.split(';').map(s => s.trim()) ?? []);
 	assert.ok(contentTypeParts.has(ap.ldJsonMediaType), `content-type ${contentTypeValue} has ${ap.ldJsonMediaType}`);
 	assert.ok(contentTypeParts.has(`profile="${ap.as2ProfileUri}"`), `content-type has profile="${ap.as2ProfileUri}"`);
+}
+
+function createRandomActivity() {
+	return {
+		type: 'Create',
+		object: {
+			type: 'Note',
+			content: 'hello, world',
+		},
+	};
 }

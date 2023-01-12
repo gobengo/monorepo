@@ -6,11 +6,13 @@ import {addressUrl} from './src/http.js';
 import {ActorServer} from './src/actor-server.js';
 import {createPersonActor} from './src/mastodon.js';
 import {JsonActivityPubSerializer} from './src/ap-serializer.js';
+import * as as2 from './src/activitystreams2.js';
 import {debuglog} from 'node:util';
 const debug = debuglog(import.meta.url);
 
 async function main() {
 	console.log('starting...');
+	const randomizeOutbox = readEnv('OUTBOX_RANDOM', false);
 	const app = express()
 		.set('trust proxy', Boolean(readEnv('TRUST_PROXY')))
 		.use(pinoHttp(
@@ -21,13 +23,46 @@ async function main() {
 			new ActorServer(
 				{
 					actor: {
-						get: createPersonActor,
+						get(options) {
+							return {
+								...createPersonActor(options),
+								icon: {
+									type: 'Image',
+									url: 'https://i.pravatar.cc/300',
+								},
+								attachment: [
+									{
+										type: 'PropertyValue',
+										name: 'GitHub',
+										value: '<a href="https://github.com/gobengo" rel="me">github.com/gobengo</a>',
+									},
+								],
+							};
+						},
 					},
 					outbox: {
-						forActor(actorId, actor) {
+						forActor(actorId, actor, outboxUrl) {
+							debug('outbox for actor', {actorId: actorId.toString()});
+							const totalItems = randomizeOutbox ? 10 : 0;
 							return {
+								// eslint-disable-next-line @typescript-eslint/naming-convention
+								'@context': 'https://www.w3.org/ns/activitystreams',
 								type: 'OrderedCollection',
-								orderedItems: [],
+								totalItems,
+								id: outboxUrl,
+								actor: actorId.toString(),
+								current: new URL('?page=current', outboxUrl),
+								first: new URL('?page=first', outboxUrl),
+								orderedItems: [
+									...randomizeOutbox
+										? Array.from(
+											{length: totalItems},
+											(e, i) => as2.RandomActivity.public({
+												id: new URL(`./activities/${i}`, outboxUrl).toString(),
+											}),
+										)
+										: [],
+								],
 							};
 						},
 					},
