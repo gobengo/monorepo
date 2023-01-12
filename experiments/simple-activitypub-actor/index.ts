@@ -3,16 +3,88 @@ import pinoHttp from 'pino-http';
 import pinoHttpPrint from 'pino-http-print';
 import {fileURLToPath} from 'node:url';
 import {addressUrl} from './src/http.js';
-import {ActorServer} from './src/actor-server.js';
+import {ActorServer, type ActorServerConfig, type ActorServerRepository} from './src/actor-server.js';
 import {createPersonActor} from './src/mastodon.js';
 import {JsonActivityPubSerializer} from './src/ap-serializer.js';
 import * as as2 from './src/activitystreams2.js';
 import debuglog from './src/debuglog.js';
+import {type Actor} from './src/actor.js';
 const debug = debuglog(import.meta.url);
+
+class Repository implements ActorServerRepository<Actor<string>, unknown> {
+	constructor(protected options: {
+		randomizeOutbox?: boolean;
+	}) {}
+
+	get actor() {
+		return {
+			get(options: {
+				id: URL;
+				inbox: URL;
+				outbox: URL;
+			}) {
+				return {
+					...createPersonActor(options),
+					icon: {
+						type: 'Image',
+						url: 'https://i.pravatar.cc/300',
+					},
+					attachment: [
+						{
+							type: 'PropertyValue',
+							name: 'GitHub',
+							value: '<a href="https://github.com/gobengo" rel="me">github.com/gobengo</a>',
+						},
+					],
+				};
+			},
+		};
+	}
+
+	get outbox() {
+		return {
+			forActor: (actorId: URL, actor: Actor<string>) => {
+				debug('outbox for actor', {actor, actorId: actorId.toString()});
+				const {randomizeOutbox} = this.options;
+				const totalItems = randomizeOutbox ? 10 : 0;
+				return {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					'@context': 'https://www.w3.org/ns/activitystreams',
+					type: 'OrderedCollection',
+					totalItems,
+					id: actor.outbox.toString(),
+					actor: actorId.toString(),
+					current: new URL('?page=current', actor.outbox),
+					first: new URL('?page=first', actor.outbox),
+					orderedItems: [
+						...randomizeOutbox
+							? Array.from(
+								{length: totalItems},
+								(e, i) => as2.RandomActivity.public({
+									id: new URL(`./activities/${i}`, actor.outbox).toString(),
+								}),
+							)
+							: [],
+					],
+				};
+			},
+		};
+	}
+}
+
+class Config implements ActorServerConfig<Actor<string>, unknown> {
+	serializer = new JsonActivityPubSerializer();
+	constructor(protected options: {
+		randomizeOutbox?: boolean;
+	}) {}
+
+	get repository() {
+		return new Repository(this.options);
+	}
+}
 
 async function main() {
 	console.log('starting...');
-	const randomizeOutbox = readEnv('OUTBOX_RANDOM', false);
 	const app = express()
 		.set('trust proxy', Boolean(readEnv('TRUST_PROXY')))
 		.use(pinoHttp(
@@ -21,53 +93,9 @@ async function main() {
 		))
 		.use(
 			new ActorServer(
-				{
-					actor: {
-						get(options) {
-							return {
-								...createPersonActor(options),
-								icon: {
-									type: 'Image',
-									url: 'https://i.pravatar.cc/300',
-								},
-								attachment: [
-									{
-										type: 'PropertyValue',
-										name: 'GitHub',
-										value: '<a href="https://github.com/gobengo" rel="me">github.com/gobengo</a>',
-									},
-								],
-							};
-						},
-					},
-					outbox: {
-						forActor(actorId, actor) {
-							debug('outbox for actor', {actor, actorId: actorId.toString()});
-							const totalItems = randomizeOutbox ? 10 : 0;
-							return {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
-								'@context': 'https://www.w3.org/ns/activitystreams',
-								type: 'OrderedCollection',
-								totalItems,
-								id: actor.outbox.toString(),
-								actor: actorId.toString(),
-								current: new URL('?page=current', actor.outbox),
-								first: new URL('?page=first', actor.outbox),
-								orderedItems: [
-									...randomizeOutbox
-										? Array.from(
-											{length: totalItems},
-											(e, i) => as2.RandomActivity.public({
-												id: new URL(`./activities/${i}`, actor.outbox).toString(),
-											}),
-										)
-										: [],
-								],
-							};
-						},
-					},
-				},
-				new JsonActivityPubSerializer(),
+				new Config({
+					randomizeOutbox: Boolean(readEnv('OUTBOX_RANDOM', false)),
+				}),
 			).listener,
 		);
 	const listener = app.listen(process.env.PORT ?? 0, () => {

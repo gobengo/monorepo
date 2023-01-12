@@ -69,20 +69,23 @@ class Outbox implements As2OutboxInterface {
 await test('serves on http', async t => {
 	const exampleOutboxItems = Array.from({length: Math.round(Math.random() * 10)}, () => createRandomActivity());
 	const server = new ActorServer({
-		actor: {
-			get: createPersonActor,
-		},
-		outbox: {
-			forActor(actorId, actor) {
-				return {
-					type: 'OrderedCollection',
-					orderedItems: [
-						...exampleOutboxItems,
-					],
-				};
+		repository: {
+			actor: {
+				get: createPersonActor,
+			},
+			outbox: {
+				forActor(actorId, actor) {
+					return {
+						type: 'OrderedCollection',
+						orderedItems: [
+							...exampleOutboxItems,
+						],
+					};
+				},
 			},
 		},
-	}, new JsonActivityPubSerializer());
+		serializer: new JsonActivityPubSerializer(),
+	});
 	await withHttpServer(server.listener, async baseUrl => {
 		const response = await fetch(baseUrl.toString());
 		assert.strictEqual(response.status, 200);
@@ -104,31 +107,38 @@ await test('serves on http', async t => {
 });
 
 await test('serves actor extra info from actor endpoint', async t => {
+	const icon = {
+		type: 'Image',
+		url: 'https://i.pravatar.cc/300',
+	};
 	const server = new ActorServer({
-		actor: {
-			get(options) {
-				return {
-					...createPersonActor(options),
-					icon: {
-						type: 'Image',
-						url: 'https://i.pravatar.cc/300',
-					},
-				};
+		repository: {
+			actor: {
+				get(options) {
+					return {
+						...createPersonActor(options),
+						icon,
+					};
+				},
+			},
+			outbox: {
+				forActor(actorId, actor) {
+					return {
+						type: 'OrderedCollection',
+						orderedItems: [],
+					};
+				},
 			},
 		},
-		outbox: {
-			forActor(actorId, actor) {
-				return {
-					type: 'OrderedCollection',
-					orderedItems: [],
-				};
-			},
-		},
-	}, new JsonActivityPubSerializer());
+		serializer: new JsonActivityPubSerializer(),
+	});
 	await withHttpServer(server.listener, async baseUrl => {
 		const response = await fetch(baseUrl);
 		assert.strictEqual(response.status, 200);
-		console.log('got response', await response.json());
+		const actor = await response.json() as unknown;
+		assert.ok(actor && typeof actor === 'object', 'actor is an object');
+		assert.ok('icon' in actor, 'actor has icon property');
+		assert.deepStrictEqual(actor.icon, icon);
 	});
 });
 

@@ -23,6 +23,11 @@ export type ActorServerRepository<
 	};
 };
 
+export type ActorServerConfig<Actor, Outbox> = {
+	readonly repository: ActorServerRepository<Actor, Outbox>;
+	readonly serializer: ActorServerSerializer<Actor, Outbox>;
+};
+
 /**
  * Serves an 'actor' over HTTP using ActivityPub protocol
  */
@@ -40,19 +45,18 @@ export class ActorServer<
 					url: outboxUrl.toString(),
 					actorId: actorId.toString(),
 				});
-				const outbox = this.repository.outbox.forActor(actorId, actor);
-				this.serializationResponder(req, res, mt => this.serializer.outbox(outbox, mt));
+				const outbox = this.config.repository.outbox.forActor(actorId, actor);
+				this.serializationResponder(req, res, mt => this.config.serializer.outbox(outbox, mt));
 				next();
 			}),
 	};
 
 	constructor(
-		protected repository: ActorServerRepository<Actor, Outbox>,
-		protected serializer: ActorServerSerializer<Actor, Outbox>,
+		protected config: ActorServerConfig<Actor, Outbox>,
 	) {}
 
 	protected getActorById(id: URL): Actor {
-		return this.repository.actor.get({
+		return this.config.repository.actor.get({
 			id,
 			inbox: new URL('inbox/', id),
 			outbox: new URL('outbox/', id),
@@ -89,7 +93,7 @@ export class ActorServer<
 			.get('/', (req, res) => {
 				const url = createRequestUrl(req);
 				const actor = this.getActorById(url);
-				this.serializationResponder(req, res, mt => this.serializer.actor(actor, mt));
+				this.serializationResponder(req, res, mt => this.config.serializer.actor(actor, mt));
 			});
 	}
 
