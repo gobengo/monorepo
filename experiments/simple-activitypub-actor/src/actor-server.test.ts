@@ -6,9 +6,9 @@ import {ActorServer} from './actor-server.js';
 import {createPersonActor} from './mastodon.js';
 import * as ap from './activitypub.js';
 
-import {debuglog} from 'node:util';
 import {JsonActivityPubSerializer} from './ap-serializer.js';
 import {hasOwnProperty} from './object.js';
+import debuglog from './debuglog.js';
 const debug = debuglog(import.meta.url);
 
 type As2ActorInterface = {

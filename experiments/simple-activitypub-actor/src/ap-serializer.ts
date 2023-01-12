@@ -1,6 +1,6 @@
 import * as ap from './activitypub.js';
 import * as as2 from './activitystreams2.js';
-import {debuglog} from 'node:util';
+import debuglog from './debuglog.js';
 const debug = debuglog(import.meta.url);
 
 export type Serialization<MediaType> = {

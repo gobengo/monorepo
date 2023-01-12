@@ -2,9 +2,9 @@ import {type RequestListener} from 'node:http';
 import express from 'express';
 import * as ap from './activitypub.js';
 import type * as as2 from './activitystreams2.js';
-import {debuglog} from 'node:util';
 import {type ActorServerSerializer, Serialization} from './ap-serializer.js';
 import {expressSerializationResponder} from './serializer-express.js';
+import debuglog from './debuglog.js';
 const debug = debuglog(import.meta.url);
 
 export type ActorServerRepository<
@@ -19,7 +19,7 @@ export type ActorServerRepository<
 		}): Actor;
 	};
 	outbox: {
-		forActor(actorId: URL, actor: Actor, outboxUrl: URL): Outbox;
+		forActor(actorId: URL, actor: Actor): Outbox;
 	};
 };
 
@@ -37,12 +37,10 @@ export class ActorServer<
 			.get('/', (req, res, next) => {
 				const outboxUrl = createRequestUrl(req);
 				debug('handling outbox request', {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					trustProxy: req.app.get('trust proxy'),
 					url: outboxUrl.toString(),
 					actorId: actorId.toString(),
 				});
-				const outbox = this.repository.outbox.forActor(actorId, actor, outboxUrl);
+				const outbox = this.repository.outbox.forActor(actorId, actor);
 				this.serializationResponder(req, res, mt => this.serializer.outbox(outbox, mt));
 				next();
 			}),
@@ -69,7 +67,6 @@ export class ActorServer<
 			const actorId = createRequestUrl(req, req.baseUrl);
 			debug('in ActorServer listener', {
 				actorId: actorId.toString(),
-				trustProxy: req.app.get('trust proxy'),
 			});
 			const handle = express()
 				.set('trust proxy', req.app.get('trust proxy'))
@@ -87,9 +84,6 @@ export class ActorServer<
 	protected get actor(): RequestListener {
 		return express()
 			.use((req, res, next) => {
-				debug('in actor endpoint', req.originalUrl, req.url, req.baseUrl, {
-					trustProxy: req.app.get('trust proxy'),
-				});
 				next();
 			})
 			.get('/', (req, res) => {

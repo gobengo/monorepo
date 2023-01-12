@@ -7,7 +7,7 @@ import {ActorServer} from './src/actor-server.js';
 import {createPersonActor} from './src/mastodon.js';
 import {JsonActivityPubSerializer} from './src/ap-serializer.js';
 import * as as2 from './src/activitystreams2.js';
-import {debuglog} from 'node:util';
+import debuglog from './src/debuglog.js';
 const debug = debuglog(import.meta.url);
 
 async function main() {
@@ -41,24 +41,24 @@ async function main() {
 						},
 					},
 					outbox: {
-						forActor(actorId, actor, outboxUrl) {
-							debug('outbox for actor', {actorId: actorId.toString()});
+						forActor(actorId, actor) {
+							debug('outbox for actor', {actor, actorId: actorId.toString()});
 							const totalItems = randomizeOutbox ? 10 : 0;
 							return {
 								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@context': 'https://www.w3.org/ns/activitystreams',
 								type: 'OrderedCollection',
 								totalItems,
-								id: outboxUrl,
+								id: actor.outbox.toString(),
 								actor: actorId.toString(),
-								current: new URL('?page=current', outboxUrl),
-								first: new URL('?page=first', outboxUrl),
+								current: new URL('?page=current', actor.outbox),
+								first: new URL('?page=first', actor.outbox),
 								orderedItems: [
 									...randomizeOutbox
 										? Array.from(
 											{length: totalItems},
 											(e, i) => as2.RandomActivity.public({
-												id: new URL(`./activities/${i}`, outboxUrl).toString(),
+												id: new URL(`./activities/${i}`, actor.outbox).toString(),
 											}),
 										)
 										: [],
