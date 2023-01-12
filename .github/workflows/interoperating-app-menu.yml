@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 16
       - run: ./common/config/ci/scripts/rush-build
-      - run: ./common/config/ci/scripts/rush-test
+      - run: node common/scripts/install-run-rush.js test -t '@interoperating.app/menu'
 
   # build_on_linux:
   #   runs-on: ubuntu-latest
