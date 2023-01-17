@@ -32,7 +32,14 @@ test('can list items in a space', async t => {
     {
       connection: createHttpConnection<any>(
         `did:web:staging.web3.storage`,
-        new URL('https://staging.up.web3.storage/'),
+        new URL('https://w3access-staging.protocol-labs.workers.dev'),
+      ),
+    },
+    // staging invoke via access-api
+    {
+      connection: createHttpConnection<any>(
+        `did:web:staging.web3.storage`,
+        new URL('https://w3access-staging.protocol-labs.workers.dev'),
       ),
     },
     // staging invoke via local
