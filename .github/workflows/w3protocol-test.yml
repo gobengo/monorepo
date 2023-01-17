@@ -1,0 +1,22 @@
+name: w3protocol-test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - run: node common/scripts/install-run-rush.js install -t '@bengo.is/w3protocol-test'
+      - run: node common/scripts/install-run-rush.js build -t '@bengo.is/w3protocol-test'
+      - working-directory: experiments/w3protocol-test
+        run: npm test
