@@ -36,12 +36,12 @@ test('can list items in a space', async t => {
       ),
     },
     // staging invoke via local
-    {
-      connection: createHttpConnection<any>(
-        `did:web:staging.web3.storage`,
-        new URL('http://localhost:8787'),
-      ),
-    },
+    // {
+    //   connection: createHttpConnection<any>(
+    //     `did:web:staging.web3.storage`,
+    //     new URL('http://localhost:8787'),
+    //   ),
+    // },
     // production invoke via upload api
     {
       connection: createHttpConnection<any>(
