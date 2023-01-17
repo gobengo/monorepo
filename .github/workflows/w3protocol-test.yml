@@ -15,7 +15,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v1
         with:
-          node-version: 16
+          node-version: 18
       - run: node common/scripts/install-run-rush.js install -t '@bengo.is/w3protocol-test'
       - run: node common/scripts/install-run-rush.js build -t '@bengo.is/w3protocol-test'
       - working-directory: experiments/w3protocol-test

@@ -149,6 +149,7 @@ function createHttpConnection<S extends Record<string,any>>(audience: Ucanto.UCA
     decoder: CBOR,
     channel: HTTP.open<S>({
       url,
+      fetch: globalThis.fetch,
     })
   })
 }
