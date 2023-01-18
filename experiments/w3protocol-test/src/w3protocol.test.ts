@@ -21,27 +21,48 @@ test('can list items in a space', async t => {
     audience: alice,
     capabilities: [
       {
-        can: 'store/*',
+        can: 'store/list',
         with: space.did(),
       }
     ],
     expiration: Infinity,
   })
   const cases = [
-    // staging invoke via upload api
+    // production invoke via production upload api
+    {
+      connection: createHttpConnection<any>(
+        `did:web:web3.storage`,
+        new URL('https://up.web3.storage'),
+      ),
+    },
+    // production invoke via production access api
+    {
+      connection: createHttpConnection<any>(
+        `did:web:web3.storage`,
+        new URL('https://access.web3.storage'),
+      ),
+    },
+    // staging invoke via staging upload api
     {
       connection: createHttpConnection<any>(
         `did:web:staging.web3.storage`,
-        new URL('https://w3access-staging.protocol-labs.workers.dev'),
+        new URL('https://staging.up.web3.storage'),
       ),
     },
-    // staging invoke via access-api
+    // staging invoke via dev access api
     {
       connection: createHttpConnection<any>(
         `did:web:staging.web3.storage`,
-        new URL('https://w3access-staging.protocol-labs.workers.dev'),
+        new URL('https://w3access-dev.protocol-labs.workers.dev'),
       ),
     },
+    // staging invoke via staging access-api
+    // {
+    //   connection: createHttpConnection<any>(
+    //     `did:web:staging.web3.storage`,
+    //     new URL('https://w3access-staging.protocol-labs.workers.dev'),
+    //   ),
+    // },
     // staging invoke via local
     // {
     //   connection: createHttpConnection<any>(
@@ -50,12 +71,12 @@ test('can list items in a space', async t => {
     //   ),
     // },
     // production invoke via upload api
-    {
-      connection: createHttpConnection<any>(
-        `did:web:web3.storage`,
-        new URL('https://up.web3.storage'),
-      ),
-    },
+    // {
+    //   connection: createHttpConnection<any>(
+    //     `did:web:web3.storage`,
+    //     new URL('https://up.web3.storage'),
+    //   ),
+    // },
     // production invoke via local
     // {
     //   connection: createHttpConnection<any>(
