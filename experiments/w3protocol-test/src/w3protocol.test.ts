@@ -27,83 +27,42 @@ test('can list items in a space', async t => {
     ],
     expiration: Infinity,
   })
-  const cases = [
-    // production invoke via production upload api
-    {
-      connection: createHttpConnection<any>(
-        `did:web:web3.storage`,
-        new URL('https://up.web3.storage'),
-      ),
-    },
-    // production invoke via production access api
-    {
-      connection: createHttpConnection<any>(
-        `did:web:web3.storage`,
-        new URL('https://access.web3.storage'),
-      ),
-    },
+  const cases: Array<{
+    audience: Ucanto.UCAN.DID,
+    url: URL,
+  }> = [
     // staging invoke via staging upload api
     {
-      connection: createHttpConnection<any>(
-        `did:web:staging.web3.storage`,
-        new URL('https://staging.up.web3.storage'),
-      ),
+      audience: `did:web:staging.web3.storage`,
+      url: new URL('https://staging.up.web3.storage'),
     },
-    // staging invoke via dev access api
+    // staging invoke via staging access api
     {
-      connection: createHttpConnection<any>(
-        `did:web:staging.web3.storage`,
-        new URL('https://w3access-dev.protocol-labs.workers.dev'),
-      ),
+      audience: `did:web:staging.web3.storage`,
+      url: new URL('https://w3access-staging.protocol-labs.workers.dev'),
     },
-    // staging invoke via staging access-api
+    // staging invoke via local access api
     // {
-    //   connection: createHttpConnection<any>(
-    //     `did:web:staging.web3.storage`,
-    //     new URL('https://w3access-staging.protocol-labs.workers.dev'),
-    //   ),
-    // },
-    // staging invoke via local
-    // {
-    //   connection: createHttpConnection<any>(
-    //     `did:web:staging.web3.storage`,
-    //     new URL('http://localhost:8787'),
-    //   ),
-    // },
-    // production invoke via upload api
-    // {
-    //   connection: createHttpConnection<any>(
-    //     `did:web:web3.storage`,
-    //     new URL('https://up.web3.storage'),
-    //   ),
-    // },
-    // production invoke via local
-    // {
-    //   connection: createHttpConnection<any>(
-    //     `did:web:web3.storage`,
-    //     new URL('https://localhost:8787'),
-    //   ),
-    // },
-    // production invoke via access-api
-    // {
-    //   connection: createHttpConnection<any>(
-    //     `did:web:web3.storage`,
-    //     new URL('https://access.web3.storage'),
-    //   ),
+    //   audience: `did:web:staging.web3.storage`,
+    //   url: new URL('http://localhost:8787'),
     // },
   ]
   for (const testCase of cases) {
+    console.log(`testing aud=${testCase.audience.toString()} url=${testCase.url.toString()}`)
+    const connection = createHttpConnection<any>(
+      testCase.audience,
+      testCase.url,
+    )
     const listResult = await Client.invoke({
       issuer: alice,
-      audience: testCase.connection.id,
+      audience: { did: () => testCase.audience },
       capability: {
         can: 'store/list',
         with: space.did(),
         nb: {},
       },
       proofs: [aliceCanManageSpace],
-    }).execute(testCase.connection);
-    console.log('listResult', listResult)
+    }).execute(connection);
     try {
       assert.deepEqual('error' in listResult, false, 'store/list result should not be an error')
       assert.notDeepEqual((listResult as any).name, 'HandlerExecutionError', `store/list result should not be a HandlerExecutionError`)
