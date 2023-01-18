@@ -46,7 +46,23 @@ test('can list items in a space', async t => {
     //   audience: `did:web:staging.web3.storage`,
     //   url: new URL('http://localhost:8787'),
     // },
+    // production invoke via production upload api
+    {
+      audience: `did:web:web3.storage`,
+      url: new URL('https://up.web3.storage'),
+    },
+    // production invoke via production access api
+    {
+      audience: `did:web:web3.storage`,
+      url: new URL('https://access.web3.storage'),
+    },
+    // // production invoke via local access api
+    // {
+    //   audience: `did:web:web3.storage`,
+    //   url: new URL('http://localhost:8787'),
+    // },
   ]
+  const caseErrors = [];
   for (const testCase of cases) {
     console.log(`testing aud=${testCase.audience.toString()} url=${testCase.url.toString()}`)
     const connection = createHttpConnection<any>(
@@ -72,10 +88,11 @@ test('can list items in a space', async t => {
         results: [],
       }, 'store/list invocation result is expected success type (for empty space)')
     } catch (error) {
-      console.warn('unexpected result from store/list invocation', listResult);
-      throw error;
+      console.warn(`unexpected result from store/list invocation aud=${testCase.audience} url=${testCase.url}`, listResult);
+      caseErrors.push({ testCase, error });
     }
   }
+  assert.equal(caseErrors.length, 0, 'no cases resulted in an error')
 })
 
 // skipped for now while we know it doesn't work
