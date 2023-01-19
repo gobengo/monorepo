@@ -11,7 +11,7 @@ import debuglog from './src/debuglog.js';
 import {type Actor} from './src/actor.js';
 const debug = debuglog(import.meta.url);
 
-class Repository implements ActorServerRepository<Actor<string>, unknown> {
+class Repository implements ActorServerRepository<Actor<string>, unknown, unknown> {
 	constructor(protected options: {
 		randomizeOutbox?: boolean;
 	}) {}
@@ -36,6 +36,25 @@ class Repository implements ActorServerRepository<Actor<string>, unknown> {
 							value: '<a href="https://github.com/gobengo" rel="me">github.com/gobengo</a>',
 						},
 					],
+				};
+			},
+		};
+	}
+
+	get inbox() {
+		return {
+			forActor(actorId: URL, actor: Actor<string>) {
+				debug('inbox for actor', {actor, actorId: actorId.toString()});
+				return {
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					'@context': 'https://www.w3.org/ns/activitystreams',
+					type: 'OrderedCollection',
+					totalItems: 0,
+					id: actor.outbox.toString(),
+					actor: actorId.toString(),
+					current: new URL('?page=current', actor.outbox),
+					first: new URL('?page=first', actor.outbox),
+					orderedItems: [],
 				};
 			},
 		};
@@ -72,7 +91,7 @@ class Repository implements ActorServerRepository<Actor<string>, unknown> {
 	}
 }
 
-class Config implements ActorServerConfig<Actor<string>, unknown> {
+class Config implements ActorServerConfig<Actor<string>, unknown, unknown> {
 	serializer = new JsonActivityPubSerializer();
 	constructor(protected options: {
 		randomizeOutbox?: boolean;
