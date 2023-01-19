@@ -11,16 +11,17 @@ export type Serialization<MediaType> = {
 export type Serializer<T, MediaType> = (value: T, contentType: MediaType) => Serialization<Exclude<MediaType, undefined>>;
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-export type ActorServerSerializer<Actor, Outbox, MediaType=string | typeof ap.mediaType> = {
+export type ActorServerSerializer<Actor, Inbox, Outbox, MediaType=string | typeof ap.mediaType> = {
 	actor: Serializer<Actor, MediaType>;
+	inbox: Serializer<Inbox, MediaType>;
 	outbox: Serializer<Outbox, MediaType>;
 };
 
 /**
  * Serializes js objects to activitystreams2 json
  */
-export class JsonActivityPubSerializer<Actor, Outbox>
-implements ActorServerSerializer<Actor, Outbox> {
+export class JsonActivityPubSerializer<Actor, Inbox, Outbox>
+implements ActorServerSerializer<Actor, Inbox, Outbox> {
 	constructor(
 		protected defaultMediaType = ap.mediaType,
 	) {}
@@ -30,6 +31,14 @@ implements ActorServerSerializer<Actor, Outbox> {
 		return {
 			mediaType: this.defaultMediaType,
 			content: JSON.stringify(actor),
+		};
+	}
+
+	inbox(inbox: Inbox, mediaType: string) {
+		debug('serializaing inbox', {mediaType});
+		return {
+			mediaType: this.defaultMediaType,
+			content: JSON.stringify(inbox),
 		};
 	}
 

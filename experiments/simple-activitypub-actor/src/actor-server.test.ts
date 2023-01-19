@@ -13,6 +13,9 @@ const debug = debuglog(import.meta.url);
 
 type As2ActorInterface = {
 	type: string | string[];
+	/** URL of activitypub inbox */
+	inbox: string;
+	/** URL of activitypub outbox */
 	outbox: string;
 };
 
@@ -22,20 +25,29 @@ class Actor implements As2ActorInterface {
 		assert.ok(typeof input === 'object', 'actor is an object');
 		assert.ok(hasOwnProperty(input, 'type'), 'actor has type property');
 		assert.ok(Array.isArray(input.type) || typeof input.type === 'string', 'actor.type is an array or string');
+
 		assert.ok(hasOwnProperty(input, 'outbox'), 'actor has an outbox property');
 		assert.ok(typeof input.outbox === 'string', 'actor.outbox is a string');
+
+		assert.ok(hasOwnProperty(input, 'inbox'), 'actor has an inbox property');
+		assert.ok(typeof input.inbox === 'string', 'actor.inbox is a string');
+
 		return new Actor(
 			input.type,
+			new URL(input.inbox),
 			new URL(input.outbox),
 		);
 	}
 
+	inbox: string;
 	outbox: string;
 
 	constructor(
 		public type: string[] | string,
+		inbox: URL,
 		outbox: URL,
 	) {
+		this.inbox = inbox.toString();
 		this.outbox = outbox.toString();
 	}
 }
@@ -73,6 +85,16 @@ await test('serves on http', async t => {
 			actor: {
 				get: createPersonActor,
 			},
+			inbox: {
+				forActor(actorId, actor) {
+					return {
+						type: 'OrderedCollection',
+						orderedItems: [
+							...exampleOutboxItems,
+						],
+					};
+				},
+			},
 			outbox: {
 				forActor(actorId, actor) {
 					return {
@@ -103,6 +125,14 @@ await test('serves on http', async t => {
 		assert.equal(outbox.type, 'OrderedCollection');
 
 		assert.equal(outbox.orderedItems.length, exampleOutboxItems.length, 'outbox has items from exampleOutboxItems');
+
+		const inboxResponse = await fetch(actor.inbox);
+		assert.equal(inboxResponse.status, 200, 'inbox response has status 200');
+		// POST inbox
+		const inboxPostResponse = await fetch(actor.inbox, {method: 'post', body: JSON.stringify({message: 'test inbox event'})});
+		assert.equal(inboxPostResponse.status, 201, 'inboxPostResponse has status 201');
+		const inboxPostBadJsonResponse = await fetch(actor.inbox, {method: 'post', body: '<xml>'});
+		assert.equal(inboxPostBadJsonResponse.status, 400, 'inboxPostBadJsonResponse has status 400');
 	});
 });
 
@@ -118,6 +148,14 @@ await test('serves actor extra info from actor endpoint', async t => {
 					return {
 						...createPersonActor(options),
 						icon,
+					};
+				},
+			},
+			inbox: {
+				forActor(actorId, actor) {
+					return {
+						type: 'OrderedCollection',
+						orderedItems: [],
 					};
 				},
 			},

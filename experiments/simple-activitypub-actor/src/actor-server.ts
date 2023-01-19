@@ -9,6 +9,7 @@ const debug = debuglog(import.meta.url);
 
 export type ActorServerRepository<
 	Actor,
+	Inbox,
 	Outbox,
 > = {
 	actor: {
@@ -18,14 +19,17 @@ export type ActorServerRepository<
 			outbox: URL;
 		}): Actor;
 	};
+	inbox: {
+		forActor(actorId: URL, actor: Actor): Inbox;
+	};
 	outbox: {
 		forActor(actorId: URL, actor: Actor): Outbox;
 	};
 };
 
-export type ActorServerConfig<Actor, Outbox> = {
-	readonly repository: ActorServerRepository<Actor, Outbox>;
-	readonly serializer: ActorServerSerializer<Actor, Outbox>;
+export type ActorServerConfig<Actor, Inbox, Outbox> = {
+	readonly repository: ActorServerRepository<Actor, Inbox, Outbox>;
+	readonly serializer: ActorServerSerializer<Actor, Inbox, Outbox>;
 };
 
 /**
@@ -33,9 +37,59 @@ export type ActorServerConfig<Actor, Outbox> = {
  */
 export class ActorServer<
 	Actor,
+	Inbox,
 	Outbox,
 > {
 	protected serializationResponder = expressSerializationResponder(ap.mediaType);
+
+	protected inbox = {
+		forActor: (actorId: URL, actor: Actor): RequestListener => express()
+			.get('/', (req, res, next) => {
+				const inboxUrl = createRequestUrl(req);
+				debug('handling inbox request', {
+					url: inboxUrl.toString(),
+					actorId: actorId.toString(),
+				});
+				const inbox = this.config.repository.inbox.forActor(actorId, actor);
+				this.serializationResponder(req, res, mt => this.config.serializer.inbox(inbox, mt));
+				next();
+			})
+			.post('/', (req, res, next) => {
+				debug('handling inbox POST request', {
+					accept: req.get('accept'),
+					length: req.get('content-length'),
+					type: req.get('content-type'),
+				});
+				(async () => {
+					const chunks: Uint8Array[] = [];
+					for await (const chunk of req) {
+						chunks.push(chunk);
+					}
+
+					const receivedEventBlob = new Blob(chunks, {type: req.get('content-type')});
+					let receivedEvent;
+					try {
+						receivedEvent = JSON.parse(await receivedEventBlob.text()) as unknown;
+					} catch (error) {
+						switch (error && typeof error === 'object' && 'name' in error && error.name) {
+							case 'SyntaxError':
+								debug('error parsing inbox event as json', error);
+								res.status(400).json({
+									message: 'invalid JSON',
+								});
+								return;
+							default:
+								throw error;
+						}
+					}
+
+					debug('inbox received event', receivedEvent);
+					res.status(201).json({
+						message: 'inbox received',
+					});
+				})().then(next).catch(next);
+			}),
+	};
 
 	protected outbox = {
 		forActor: (actorId: URL, actor: Actor): RequestListener => express()
@@ -52,7 +106,7 @@ export class ActorServer<
 	};
 
 	constructor(
-		protected config: ActorServerConfig<Actor, Outbox>,
+		protected config: ActorServerConfig<Actor, Inbox, Outbox>,
 	) {}
 
 	protected getActorById(id: URL): Actor {
@@ -76,6 +130,7 @@ export class ActorServer<
 				.set('trust proxy', req.app.get('trust proxy'))
 				// These must use `.use()` to inherit express app settings e.g. 'trust proxy'
 				.use('/', this.actor)
+				.use('/inbox', this.inbox.forActor(actorId, this.getActorById(actorId)))
 				.use('/outbox', this.outbox.forActor(actorId, this.getActorById(actorId)))
 				.use('/.well-known/webfinger', this.webfinger);
 			handle(req, res, next);
