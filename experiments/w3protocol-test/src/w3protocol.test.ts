@@ -115,11 +115,16 @@ test('w3protocol-test can upload file', { skip: true }, async (t) => {
     expiration: Infinity,
   })
   const file: BlobLike = new Blob(['hello world'], { type: 'text/plain' });
+  const connection = createHttpConnection(
+    `did:web:staging.web3.storage`,
+    new URL('https://w3access-staging.protocol-labs.workers.dev'),
+  )
   let uploadResult;
   try {
     uploadResult = await upload.uploadFile(
       {
         issuer: alice,
+        audience: connection.id,
         with: space.did(),
         proofs: [
           aliceCanManageSpace,
@@ -127,10 +132,7 @@ test('w3protocol-test can upload file', { skip: true }, async (t) => {
       },
       file,
       {
-        connection: createHttpConnection(
-          `did:web:web3.storage`,
-          new URL('https://access.web3.storage'),
-        )
+        connection: connection as Ucanto.ConnectionView<any>
       }
     );
   } catch (error) {
