@@ -415,6 +415,10 @@
     {
       "packageName": "@bengo.is/simple-activitypub-actor",
       "projectFolder": "experiments/simple-activitypub-actor"
+    },
+    {
+      "packageName": "@bengo.is/w3protocol-test",
+      "projectFolder": "experiments/w3protocol-test"
     }
     // {
     //   /**
