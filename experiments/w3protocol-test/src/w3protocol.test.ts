@@ -13,7 +13,7 @@ import * as CBOR from '@ucanto/transport/cbor'
 import * as ucanto from '@ucanto/core'
 import * as Client from '@ucanto/client'
 
-test('can list items in a space', async t => {
+test('can list items in a space', { skip: false }, async t => {
   const space = await ed25519.generate();
   const alice = await ed25519.generate();
   const aliceCanManageSpace = await ucanto.delegate({
@@ -69,16 +69,18 @@ test('can list items in a space', async t => {
       testCase.audience,
       testCase.url,
     )
-    const listResult = await Client.invoke({
-      issuer: alice,
-      audience: { did: () => testCase.audience },
-      capability: {
-        can: 'store/list',
-        with: space.did(),
-        nb: {},
-      },
-      proofs: [aliceCanManageSpace],
-    }).execute(connection);
+    const listResult = await Client
+      .invoke({
+        issuer: alice,
+        audience: { did: () => testCase.audience },
+        capability: {
+          can: 'store/list',
+          with: space.did(),
+          nb: {},
+        },
+        proofs: [aliceCanManageSpace],
+      })
+      .execute(connection);
     try {
       assert.deepEqual('error' in listResult, false, 'store/list result should not be an error')
       assert.notDeepEqual((listResult as any).name, 'HandlerExecutionError', `store/list result should not be a HandlerExecutionError`)
@@ -96,7 +98,7 @@ test('can list items in a space', async t => {
 })
 
 // skipped for now while we know it doesn't work
-test('w3protocol-test can upload file', { skip: true }, async (t) => {
+test('w3protocol-test can upload file', { skip: false, only: true }, async (t) => {
   const space = await ed25519.generate();
   const alice = await ed25519.generate();
   console.log({
@@ -118,6 +120,7 @@ test('w3protocol-test can upload file', { skip: true }, async (t) => {
   const connection = createHttpConnection(
     `did:web:staging.web3.storage`,
     new URL('https://w3access-staging.protocol-labs.workers.dev'),
+    // new URL('http://localhost:8787'),
   )
   let uploadResult;
   try {
