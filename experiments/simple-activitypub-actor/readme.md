@@ -7,6 +7,7 @@ Why?
 
 How does it interoperate with Mastodon?
 * [x] if you search in mastodon for the URL of this actor, it will show up as a result with a name and icon
+  * pro tip: when devving and running this server on localhost, you can expose that port to the world with ssl via [ngrok](https://ngrok.com/). `ngrok http 3000` to expose port 3000. Then you can use the ngrok base URL when searching in a mastodon instance.
 * [ ] you can see recent posts from the actor's outbox
   * [ ] for this, mastodon requires someone on the instance to be following the actor (or retoot i hear), so we need to implement followability
     * [ ] followability requires implementing an activitypub inbox
