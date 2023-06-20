@@ -1,37 +1,32 @@
 import * as Earthstar from "https://cdn.earthstar-project.org/js/earthstar.web.v10.0.2.js";
 
 const settings = new Earthstar.SharedSettings();
-console.log('settings', settings)
-console.log('settings.author', settings.author)
-console.log('settings.shares', settings.shares)
-
-if (settings.shares.length === 0) {
-  settings.addShare(
-    await Earthstar.Crypto.generateShareKeypair('blog')
-  )
+const blogShare = {
+  address: "+blog.bzhtvlmz2ndsbmeig3hikz5mtwtd5cmcswpm6usu5pvpfvt3on66q",
+  // because this is public, the share is public
+  secret: "by3cf3sl7xwmatgy62jdrwtxtcqxyo2kmvntl4xy7ck6ix6x4vpea"
 }
+console.log('blog share', blogShare.address)
+
+// console.log('settings', settings)
+console.log('settings.author', settings.author.address)
+// console.log('settings.shares', settings.shares)
 
 const localBlogReplica = new Earthstar.Replica({
-  driver: new Earthstar.ReplicaDriverWeb(localBlogShare.shareAddress),
-  shareSecret: localBlogShare.secret
-})
-
-console.log('localBlogShare', localBlogShare)
-
-console.log({
-  localBlogShare,
-  localBlogReplica,
+  driver: new Earthstar.ReplicaDriverWeb(blogShare.address),
+  shareSecret: blogShare.secret
 })
 
 const cache = new Earthstar.ReplicaCache(localBlogReplica);
 cache.onCacheUpdated(() => {
+  console.log('cache.onCacheUpdated')
   renderBlog();
 })
 
 function renderBlogFragment() {
   const blogDocs = cache.queryDocs({
     filter: {
-      pathStartsWith: '/blog/',
+      // pathStartsWith: '/',
     }
   })
   console.log({ blogDocs })
@@ -41,9 +36,10 @@ function renderBlogFragment() {
     <ul>
     ${
       blogDocs.map(post => {
+        console.log('blogDoc', post)
         return `
         <li>
-        ${post.text}
+        ${post.path}
         </li>
         `
       }).join('\n')
@@ -61,7 +57,7 @@ function renderBlog(el=document.getElementById('blog')) {
   el.appendChild(renderBlogFragment())
 }
 
-// renderBlog()
+renderBlog()
 
 const form = document.getElementById("message-form");
 const input = document.querySelector("input");

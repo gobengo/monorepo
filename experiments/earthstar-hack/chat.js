@@ -1,8 +1,8 @@
-import { Earthstar } from "./deps.ts"
+import * as Earthstar from "https://cdn.earthstar-project.org/js/earthstar.web.v10.0.2.js";
 
 const settings = new Earthstar.SharedSettings();
 settings.foo = "bar"
-console.log('settings', settings)
+// console.log('settings', settings)
 
 const shareKeypair = {
   shareAddress: "+chatting.bn6kn6majgivcofrtqimannwsgroecsclg4eq6xj2ygxn7b7msl5q",
@@ -15,13 +15,13 @@ const authorKeypair = {
 }
 
 if (Earthstar.notErr(shareKeypair) && Earthstar.notErr(authorKeypair)) {
-	console.group("Share keypair");
-	console.log(shareKeypair);
-	console.groupEnd();
+	// console.group("Share keypair");
+	// console.log(shareKeypair);
+	// console.groupEnd();
 
-	console.group("Author keypair");
-	console.log(authorKeypair);
-	console.groupEnd();
+	// console.group("Author keypair");
+	// console.log(authorKeypair);
+	// console.groupEnd();
 } else if (Earthstar.isErr(shareKeypair)) {
 	console.error(shareKeypair);
 } else if (Earthstar.isErr(authorKeypair)) {
