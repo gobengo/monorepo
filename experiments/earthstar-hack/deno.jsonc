@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "std/": "https://deno.land/std@0.192.0/",
+    "earthstar/": "https://deno.land/x/earthstar@v10.0.2/"
+  },
+  "tasks": {
+    "dev": "deno run --watch main.ts"
+  }
+}

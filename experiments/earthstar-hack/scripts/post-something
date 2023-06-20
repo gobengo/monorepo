@@ -1,0 +1,42 @@
+#!/usr/bin/env -S deno run --allow-env --ext=ts
+
+import * as Earthstar from "https://deno.land/x/earthstar@v10.0.2/mod.ts";
+import { parse } from "https://deno.land/std@0.184.0/flags/mod.ts";
+
+const args = parse(Deno.args, {
+  boolean: ["clearAuthor", "printShare"],
+  // string: ["version"],
+  // default: { color: true },
+});
+
+if (args.clearAuthor) {
+  console.warn('deleting from localStorage: `earthstar:current_author`')
+  localStorage.removeItem("earthstar:current_author")
+}
+
+const settings = new Earthstar.SharedSettings
+if ( ! settings.author) {
+  const newAuthor = await Earthstar.Crypto.generateAuthorKeypair('abcd')
+  if (Earthstar.isErr(newAuthor)) {
+    throw new Error('error creating author')
+  }
+  settings.author = newAuthor
+}
+if (settings.shares.length === 0) {
+  const blog = Earthstar.generateShareAddress('blog');
+  if (Earthstar.isErr(blog)) {
+    throw new Error('error generating blog share', { cause: blog })
+  }
+  settings.addShare(blog)
+}
+
+console.log('settings.author', settings.author)
+console.log('settings.shares', settings.shares[0])
+
+if (args.printShare) {
+  console.log('settings', settings)
+}
+
+const newPost = `post-${Math.random().toString().slice(2)}`
+console.log(`newPost`, newPost)
+
